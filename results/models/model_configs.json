@@ -1,0 +1,34 @@
+{
+ "LogisticRegression": {
+  "family": "Linear",
+  "config": "StandardScaler + L2 logistic regression, C=1.0, lbfgs, max_iter=500"
+ },
+ "GaussianNB": {
+  "family": "Probabilistic",
+  "config": "Gaussian Naive Bayes, var_smoothing=1e-9 (class-conditional independent Gaussians)"
+ },
+ "KNN": {
+  "family": "Instance-based",
+  "config": "StandardScaler + distance-weighted KNN, k=25, Euclidean; fit on a 150k-row random subsample"
+ },
+ "DecisionTree": {
+  "family": "Tree",
+  "config": "CART, gini, max_depth=12, min_samples_leaf=50"
+ },
+ "RandomForest": {
+  "family": "Ensemble (bagging)",
+  "config": "150 trees, max_depth=None, min_samples_leaf=5, max_features=sqrt, max_samples=0.25"
+ },
+ "LightGBM": {
+  "family": "Boosting",
+  "config": "GBDT, 400 rounds, lr=0.05, num_leaves=63, min_child_samples=50, subsample=0.8, colsample=0.8"
+ },
+ "XGBoost": {
+  "family": "Boosting",
+  "config": "hist trees, 400 rounds, lr=0.05, max_depth=8, subsample=0.8, colsample=0.8"
+ },
+ "MLP": {
+  "family": "Neural network",
+  "config": "StandardScaler + MLP 25-64-32-1, ReLU, Adam lr=1e-3, L2 alpha=1e-4, batch 2048, 20 epochs"
+ }
+}

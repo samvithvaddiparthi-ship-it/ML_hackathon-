@@ -18,3 +18,4 @@ tabulate==0.10.0
 uvicorn==0.54.0
 xgboost==3.4.1
 playwright==1.63.0
+markdown==3.11.3

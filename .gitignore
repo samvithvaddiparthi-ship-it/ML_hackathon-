@@ -6,3 +6,4 @@ data/
 # raw dataset lives outside the repo (see config.py / PATHSNAP_DATA)
 results/cache/
 *.parquet
+artifacts/models/RandomForest.joblib

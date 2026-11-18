@@ -1,0 +1,45 @@
+INFO:     Started server process [7754]
+INFO:     Waiting for application startup.
+
+[1m[95mPathSnap API[0m  model=XGBoost untuned + HMM/Viterbi v1.0
+  trips folder : /Users/samvithvaddiparthi/Downloads/Student folder/student_test  (10 trips)
+  UI API URL   : [96mhttp://10.20.205.161:8000[0m
+  UI API URL   : [96mhttp://192.168.2.1:8000[0m
+  Swagger docs : http://localhost:8000/docs
+
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:51563 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51566 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51568 - "GET /trips HTTP/1.1" 200 OK
+[1m[95m[PathSnap][0m [90m2026-11-18 15:03:53[0m | client=[96m127.0.0.1[0m | trip=[1m00000000[0m | n_obs=2503 | top1=0.982 | [92mroute_f1=0.96[0m | 322 ms
+INFO:     127.0.0.1:51570 - "POST /predict HTTP/1.1" 200 OK
+[1m[95m[PathSnap][0m [90m2026-11-18 15:03:53[0m | client=[96m127.0.0.1[0m | trip=[1m00000007[0m | n_obs=1354 | top1=0.999 | [92mroute_f1=0.99[0m | 117 ms
+INFO:     127.0.0.1:51572 - "POST /predict HTTP/1.1" 200 OK
+[1m[95m[PathSnap][0m [90m2026-11-18 15:03:53[0m | client=[96m127.0.0.1[0m | trip=[1m00000009[0m | n_obs=1049 | top1=0.914 | [92mroute_f1=0.96[0m | 374 ms
+INFO:     127.0.0.1:51574 - "POST /predict HTTP/1.1" 200 OK
+[1m[95m[PathSnap][0m [90m2026-11-18 15:03:54[0m | client=[96m127.0.0.1[0m | trip=[1m00000040[0m | n_obs=2995 | top1=0.979 | [92mroute_f1=1.00[0m | 387 ms
+INFO:     127.0.0.1:51576 - "POST /predict HTTP/1.1" 200 OK
+[1m[95m[PathSnap][0m [90m2026-11-18 15:03:54[0m | client=[96m127.0.0.1[0m | trip=[1m00000052[0m | n_obs=262 | top1=1.000 | [92mroute_f1=0.99[0m | 59 ms
+INFO:     127.0.0.1:51578 - "POST /predict HTTP/1.1" 200 OK
+[1m[95m[PathSnap][0m [90m2026-11-18 15:03:55[0m | client=[96m127.0.0.1[0m | trip=[1m00000056[0m | n_obs=3958 | top1=0.967 | [92mroute_f1=0.98[0m | 1062 ms
+INFO:     127.0.0.1:51580 - "POST /predict HTTP/1.1" 200 OK
+[1m[95m[PathSnap][0m [90m2026-11-18 15:03:55[0m | client=[96m127.0.0.1[0m | trip=[1m00000065[0m | n_obs=768 | top1=0.863 | [92mroute_f1=0.99[0m | 204 ms
+INFO:     127.0.0.1:51581 - "POST /predict HTTP/1.1" 200 OK
+[1m[95m[PathSnap][0m [90m2026-11-18 15:03:56[0m | client=[96m127.0.0.1[0m | trip=[1m00000076[0m | n_obs=1486 | top1=0.972 | [92mroute_f1=0.95[0m | 966 ms
+INFO:     127.0.0.1:51582 - "POST /predict HTTP/1.1" 200 OK
+[1m[95m[PathSnap][0m [90m2026-11-18 15:03:57[0m | client=[96m127.0.0.1[0m | trip=[1m00000077[0m | n_obs=3911 | top1=0.874 | [92mroute_f1=0.95[0m | 617 ms
+INFO:     127.0.0.1:51583 - "POST /predict HTTP/1.1" 200 OK
+[1m[95m[PathSnap][0m [90m2026-11-18 15:03:57[0m | client=[96m127.0.0.1[0m | trip=[1m00000091[0m | n_obs=874 | top1=0.941 | [92mroute_f1=0.98[0m | 257 ms
+INFO:     127.0.0.1:51584 - "POST /predict HTTP/1.1" 200 OK
+[1m[95m[PathSnap][0m [90m2026-11-18 15:03:57[0m | client=127.0.0.1 | trip=does_not_exist | [91mHTTP 404: unknown trip_id 'does_not_exist'[0m
+INFO:     127.0.0.1:51585 - "POST /predict HTTP/1.1" 404 Not Found
+[1m[95m[PathSnap][0m [90m2026-11-18 15:03:57[0m | client=127.0.0.1 | trip=..%2F..%2Fetc | [91mHTTP 400: trip_id may only contain letters, digits, '_' and '-'[0m
+INFO:     127.0.0.1:51586 - "POST /predict HTTP/1.1" 400 Bad Request
+[1m[95m[PathSnap][0m [90m2026-11-18 15:03:57[0m | client=127.0.0.1 | trip=../train | [91mHTTP 400: trip_id may only contain letters, digits, '_' and '-'[0m
+INFO:     127.0.0.1:51587 - "POST /predict HTTP/1.1" 400 Bad Request
+[1m[95m[PathSnap][0m [90m2026-11-18 15:04:03[0m | client=[96m127.0.0.1[0m | trip=[1m00000077[0m | n_obs=3911 | top1=0.766 | [92mroute_f1=0.89[0m | 290 ms
+INFO:     127.0.0.1:51590 - "POST /predict HTTP/1.1" 200 OK
+[1m[95m[PathSnap][0m [90m2026-11-18 15:04:04[0m | client=[96m127.0.0.1[0m | trip=[1m00000077[0m | n_obs=3911 | top1=0.874 | [92mroute_f1=0.95[0m | 614 ms
+INFO:     127.0.0.1:51592 - "POST /predict HTTP/1.1" 200 OK
+INFO:     Shutting down

@@ -53,7 +53,14 @@ def score_trip(pred: dict, trip_dir: Path) -> dict:
     rec = tp / max(len(ref), 1)
     pred_und = {frozenset((u[b], v[b])) for b in p}
     rec_und = float(np.mean([frozenset((u[a], v[a])) in pred_und for a in ref])) if p else 0.0
+    extra = {}
+    if "pred_arc_classifier_only" in pred:            # classifier-only baseline of the same request (numbers only)
+        ca, cf = obs_metrics(pred["pred_arc_classifier_only"], lab)
+        cr = pred.get("route_arcs_classifier_only", [])
+        extra = {"top1_accuracy_classifier_only": None if ca is None else round(ca, 4),
+                 "route_continuity_classifier_only": round(route_continuity(cr, u, v), 4) if cr else None}
     return {
+        **extra,
         "top1_accuracy": None if acc is None else round(acc, 4),
         "macro_f1": None if f1 is None else round(f1, 4),
         "route_precision": round(prec, 4),

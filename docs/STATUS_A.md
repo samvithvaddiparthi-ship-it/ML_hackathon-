@@ -55,3 +55,22 @@ colsample_bytree 0.409, gamma 4.85, reg_lambda 0.177, reg_alpha 0.0035. Most imp
 Tuning gave a small CV gain (+0.16 pt top-1, inside the fold std), a lower fold variance, a much smaller
 train/CV gap (5.2 → 1.0 pt: the overfitting is gone) and 32 % faster inference, but −0.7 pt on the 10 student-test
 trips. Both are carried into the HMM stage; the final deployed model is chosen there on CV + student-test route results.
+
+## Stage A4 ✅ – HMM/Viterbi route reconstruction + final model (pipeline is FINAL)
+Run: `scripts/07_hmm_experiments.py` (OOF emissions + decoder grid, ~5 min) → `scripts/08_export_final.py` (exports
+`artifacts/final/` + smoke test) → `scripts/09_plot_hmm.py`. Code: `src/pathsnap/hmm.py` (states / emission /
+transition / gaps / restarts / route expansion documented in the docstring), `src/pathsnap/pipeline.py`.
+
+* Decoder tuned on TRAIN out-of-fold emissions only. Only λ = w_e·β matters (proved in the docstring of 07); best λ = 0.75
+  (β = 3 m, w_e = 0.25), gap_s = 120 s. Emission model chosen inside the HMM: **untuned XGBoost** (train-OOF HMM Top-1
+  0.9523 vs 0.9490 for the Optuna-tuned one) → deployed model = "XGBoost untuned + HMM/Viterbi" v1.0.
+* Student-test (10 trips): Top-1 0.9015 → **0.9466**, obs macro-F1 0.9476 → 0.9662, route F1 0.8994 → **0.9715**,
+  route length recall 0.981 → 0.999, continuity 0.836 → **0.9995**. Train OOF: Top-1 0.8954 → 0.9523.
+* HMM did not help: student-test trip 65 (−0.3 pt, the only trip with a gap > gap_s); 7 of 80 train trips (worst 22, 89: −1.9 pt).
+* API end-to-end on student_test: `api/test_api.py` → ALL CHECKS PASSED (50 ms – 1.1 s per trip); `use_hmm=false` works.
+* New response keys (additive): `pred_arc_classifier_only`, `route_arcs_classifier_only`, `route_coords_classifier_only`,
+  `hmm` {used_hmm, n_gap_breaks, n_disconnect_breaks, params}, `timing_ms` {features, classifier, hmm, total};
+  `metrics` adds `top1_accuracy_classifier_only`, `route_continuity_classifier_only`.
+* **For Aditya**: §5 results table + Q6 ready to paste at the `<!-- A: results table + Q6 -->` marker:
+  `docs/REPORT_SEC5_RESULTS_FROM_A.md` (Figures 27–29, Table 3). My §4 draft with real numbers: `docs/REPORT_SEC4_DRAFT_FROM_A.md`.
+  Route maps / screenshots / PDF can now be generated (C4).

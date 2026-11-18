@@ -1,0 +1,57 @@
+{
+ "name": "XGBoost untuned + HMM/Viterbi",
+ "version": "1.0",
+ "emission_model": "XGBoost_untuned",
+ "emission_params": "hist trees, 400 rounds, lr=0.05, max_depth=8, subsample=0.8, colsample=0.8",
+ "features": [
+  "dist",
+  "dist_rank",
+  "dist_minus_min",
+  "dist_ratio_min",
+  "n_cand",
+  "gauss_norm",
+  "t_along",
+  "arc_len",
+  "cos_head",
+  "abs_cos_head",
+  "head_reliab",
+  "win2_mean",
+  "win2_max",
+  "win5_mean",
+  "win5_max",
+  "win5_rank",
+  "speed",
+  "dt_prev",
+  "dt_next",
+  "jump",
+  "out_deg_v",
+  "in_deg_u",
+  "cont_prev",
+  "cont_next",
+  "has_reverse_cand"
+ ],
+ "candidates": {
+  "radius_m": 50.0,
+  "max_k": 12,
+  "sigma_m": 5.0
+ },
+ "hmm": {
+  "beta": 3.0,
+  "w_e": 0.25,
+  "gap_s": 120.0,
+  "vmax": 50.0
+ },
+ "trained_on": "80 TRAIN trips (labelled observations); decoder tuned on TRAIN out-of-fold emissions",
+ "student_test": {
+  "classifier_only": {
+   "top1_acc": 0.9015,
+   "route_f1": 0.8994,
+   "route_continuity": 0.8362
+  },
+  "hmm": {
+   "top1_acc": 0.9466,
+   "route_f1": 0.9715,
+   "route_continuity": 0.9995
+  }
+ }
+}

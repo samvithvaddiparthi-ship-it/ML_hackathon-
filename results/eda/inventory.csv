@@ -1,0 +1,3 @@
+partition,trips,total_obs,obs_min,obs_median,obs_max,nodes_median,arcs_median,route_arcs_total
+student_test,10,19160,262,1420.0,3958,6596.5,13145.0,3477
+train,80,208417,361,1529.0,19313,9608.0,19526.5,31336

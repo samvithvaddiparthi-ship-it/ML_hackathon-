@@ -1,0 +1,11 @@
+,student_test,train
+nan_lon,0,0
+nan_lat,0,0
+nan_t,0,0
+invalid_lon,0,0
+invalid_lat,0,0
+zero_lonlat,0,0
+nonincreasing_t,0,0
+nan_nodes,0,0
+nan_arcs,0,0
+nan_route,0,0

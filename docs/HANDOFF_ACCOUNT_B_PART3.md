@@ -33,4 +33,11 @@ The pipeline will soon ADD keys: `pred_arc_classifier_only`, `route_coords_class
 2. Run `api/test_api.py` against student_test; two-laptop rehearsal; take the §7 UI + Laptop-1 console screenshots.
 3. `python report/build_report.py` → final PDF; check every TODO marker is gone.
 
+## C5 – Draft report §5 METHOD text now (A only adds the result tables later)
+Read `src/pathsnap/hmm.py` (its docstring is the spec) and write in `report/report.md` §5 the answers to Q1–Q5:
+hidden states (candidate arc + along-arc position per observation, ≤12), emission (w_e·log p_XGBoost), transition
+(−|d_route − d_gps|/β over the directed network, speed-based cut-off), large gaps (dt > gap_s → network constraint
+dropped), disconnected candidates (chain restarted, counted), route expansion with shortest-path arcs.
+Leave a marker `<!-- A: results table + Q6 -->` where the classifier-only vs HMM results go. Do not invent numbers.
+
 Report your progress in `docs/STATUS_B.md` as before.

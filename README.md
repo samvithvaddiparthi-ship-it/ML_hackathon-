@@ -84,7 +84,4 @@ Full guide: [`deploy/DEPLOYMENT.md`](deploy/DEPLOYMENT.md).
 2. **Laptop 2 (UI):** `deploy\run_ui.bat http://<laptop1-IP>:8000` – opens `http://localhost:5500`.
 3. Same Wi-Fi / phone hotspot for both. Pick a trip → *Run map-matching*; Laptop 1's console logs each request.
 
-## AI-assistance disclosure
-AI coding assistants were used during development (code scaffolding, debugging and drafting documentation).
-All experiments were actually executed by the team; every reported number is produced by the scripts in this
-repository, and every team member can explain the code and results.
+

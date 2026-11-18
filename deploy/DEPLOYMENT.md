@@ -44,3 +44,18 @@
 | 404 for a trip | the folder name must equal the file stem (`00000052/00000052.track`) |
 | Port 8000 busy | close the other uvicorn window, or change `--port` in `run_api.*` and the UI URL |
 | Map is grey | no internet for map tiles – everything else still works |
+
+## Helper scripts (Windows, double-click or run from any folder)
+| Script | Does |
+|---|---|
+| `deploy\setup_env.bat` | create `.venv`, install requirements + Chromium (once) |
+| `deploy\run_eda.bat` | re-run the EDA → `results\eda`, `results\maps` |
+| `deploy\run_api.bat ["trips folder"]` | start the API (Laptop 1) |
+| `deploy\run_ui.bat [api-url]` | serve and open the UI (Laptop 2) |
+| `deploy\test_api.bat [api-url]` | smoke-test a running API |
+| `deploy\test_map.bat [trip_id]` | build and open one Folium map from student_test |
+| `deploy\run_error_analysis.bat` | B7 error analysis → `results\analysis` |
+| `deploy\make_route_maps.bat [trip_id]` | classifier-only vs HMM route maps → `results\maps\<id>_routes.html/.png` |
+| `deploy\build_report.bat` | build and open `report\PathSnap_Report.pdf` |
+| `deploy\open_firewall.bat` | open TCP 8000 (run as Administrator, Laptop 1) |
+| `deploy\push.bat "message"` | commit all changes on `app-eda` and push |

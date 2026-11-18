@@ -21,14 +21,15 @@ Module contract between the two work streams: [`docs/INTERFACE.md`](docs/INTERFA
 | `scripts/` | numbered ML pipeline scripts (inventory, labels, training, Bayesian optimisation, HMM evaluation) |
 | `config.py` | data paths (env `PATHSNAP_DATA`, `PATHSNAP_EVAL_DATA`) and seed |
 | `eda/` | `02_eda.py` – exploratory data analysis for Report §2.2 |
-| `viz/` | `folium_maps.py` – reusable Folium map builder |
+| `viz/` | `folium_maps.py` – reusable Folium map builder; `make_route_maps.py` – classifier-only vs HMM route maps |
+| `analysis/` | `error_analysis.py` – where the selected classifier fails (student_test) |
 | `api/` | FastAPI backend (`main.py`), smoke test (`test_api.py`), [API README](api/README.md) |
 | `ui/` | evaluator UI – static `index.html` / `app.js` / `style.css`, Leaflet bundled in `ui/vendor/` |
 | `deploy/` | start scripts for both laptops and the [two-laptop guide](deploy/DEPLOYMENT.md) |
 | `report/` | report source (`report.md`) and PDF builder (`build_report.py`) |
 | `results/` | generated tables, figures and maps (`stage1/`, `eda/`, `maps/`, `models/`, `hmm/`) |
 | `artifacts/` | saved model weights and configuration used by the API |
-| `docs/` | interface contract, hand-over notes, status files |
+| `docs/` | interface contract, hand-over notes, status files, viva Q&A (`VIVA_QA.md`) |
 
 ## Installation
 Python 3.11+ recommended.
@@ -61,7 +62,11 @@ Commands use Windows paths (`.venv\Scripts\python`); on macOS/Linux use `.venv/b
 |---|---|---|
 | 1 – dataset inventory & quality | `.venv\Scripts\python scripts\01_inventory.py` | `results/stage1/` |
 | EDA (Report §2.2) | `.venv\Scripts\python eda\02_eda.py` | `results/eda/`, `results/maps/eda_*.html/.png` |
-| ML stages (labels, features, models, Bayesian opt, HMM) | *added by the ML-core stream – see `scripts/`* | `results/models/`, `results/hmm/`, `artifacts/` |
+| A1 – labels, candidates, features | `.venv\Scripts\python scripts\02_build_dataset.py` | `results/cache/` (git-ignored), `results/dataset/` |
+| A2 – train & compare 8 models | `.venv\Scripts\python scripts\03_train_models.py` then `scripts\04_plot_models.py` | `results/models/`, `artifacts/models/` |
+| A3–A5 – Bayesian opt, HMM, export | *added by the ML-core stream* | `results/models/`, `results/hmm/`, `artifacts/` |
+| B7 – error analysis | `.venv\Scripts\python analysis\error_analysis.py` | `results/analysis/` |
+| B8 – route-comparison maps | `.venv\Scripts\python viz\make_route_maps.py --all-student-test` | `results/maps/<id>_routes.html/.png` |
 | API smoke test | start API, then `.venv\Scripts\python api\test_api.py` | console report |
 | Report PDF | `.venv\Scripts\python report\build_report.py` | `report/PathSnap_Report.pdf` |
 

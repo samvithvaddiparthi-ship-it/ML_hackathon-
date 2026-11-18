@@ -39,3 +39,19 @@ CV columns = mean over the 5 GroupKFold folds (per-fold values: `results/models/
 Selected for Bayesian optimisation: **XGBoost** (best CV top-1 = primary metric, best CV log loss → best HMM emissions,
 4× faster inference than LightGBM). Boosting models show a ~5-point train/CV gap → mild overfitting to tune away.
 Next: Stage A3 – Optuna Bayesian optimisation of XGBoost.
+
+## Stage A3 – Bayesian hyper-parameter optimisation (XGBoost) ✅
+Run: `.venv/bin/python scripts/05_bayes_opt.py 40` (~33 min wall clock) then `scripts/06_plot_bayes.py`.
+Optuna TPE (seed 42, 10 random start-up trials) + MedianPruner, objective = mean GroupKFold(5) Top-1 on the 80 train
+trips (same folds as A2). 40 trials: 25 completed, 15 pruned. Search record: `results/bayes_opt/study.db`, `trials.csv`.
+Best (trial 31): n_estimators 410, learning_rate 0.0238, max_depth 6, min_child_weight 9.88, subsample 0.758,
+colsample_bytree 0.409, gamma 4.85, reg_lambda 0.177, reg_alpha 0.0035. Most important (fANOVA): subsample 0.62.
+
+| | CV top-1 | CV top-1 std | CV macro-F1 | CV log loss | train top-1 | ST top-1 | ST macro-F1 | ST log loss | ms / 1k obs |
+|---|---|---|---|---|---|---|---|---|---|
+| untuned | 0.8958 | 0.0177 | 0.9366 | 0.0759 | 0.9480 | 0.9015 | 0.9408 | 0.0642 | 17.8 |
+| tuned | **0.8974** | **0.0157** | **0.9369** | 0.0759 | 0.9074 | 0.8947 | 0.9371 | 0.0672 | **12.1** |
+
+Tuning gave a small CV gain (+0.16 pt top-1, inside the fold std), a lower fold variance, a much smaller
+train/CV gap (5.2 → 1.0 pt: the overfitting is gone) and 32 % faster inference, but −0.7 pt on the 10 student-test
+trips. Both are carried into the HMM stage; the final deployed model is chosen there on CV + student-test route results.

@@ -1,0 +1,39 @@
+{
+ "best_trial": 31,
+ "best_cv_top1": 0.8973612510313014,
+ "params": {
+  "n_estimators": 410,
+  "learning_rate": 0.02383815713851495,
+  "max_depth": 6,
+  "min_child_weight": 9.88081853847695,
+  "subsample": 0.7584630444634808,
+  "colsample_bytree": 0.4093851419076409,
+  "gamma": 4.850889592318346,
+  "reg_lambda": 0.17654359345077406,
+  "reg_alpha": 0.003485620637397462
+ },
+ "user_attrs": {
+  "cv_log_loss": 0.075907401740551,
+  "cv_macro_f1": 0.9369027230899902,
+  "cv_top1_std": 0.015698358515959646,
+  "seconds": 77.29866324999966
+ },
+ "n_trials": 40,
+ "n_complete": 25,
+ "n_pruned": 15,
+ "search_space": {
+  "n_estimators": "int [100, 800], log-uniform",
+  "learning_rate": "float [0.01, 0.3], log-uniform",
+  "max_depth": "int [3, 12]",
+  "min_child_weight": "float [1, 200], log-uniform",
+  "subsample": "float [0.5, 1.0]",
+  "colsample_bytree": "float [0.4, 1.0]",
+  "gamma": "float [0, 5]",
+  "reg_lambda": "float [1e-3, 50], log-uniform",
+  "reg_alpha": "float [1e-3, 10], log-uniform"
+ },
+ "objective": "maximise mean GroupKFold(5) Top-1",
+ "sampler": "TPE seed 42, 10 start-up trials",
+ "pruner": "MedianPruner(8 start-up, 1 warm-up fold)",
+ "search_seconds_this_run": 2.9100010578986257e-07
+}

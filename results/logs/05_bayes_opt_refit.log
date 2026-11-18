@@ -1,0 +1,21 @@
+[I 2026-11-18 14:39:32,562] Using an existing study with `study_name='xgboost_top1'` instead of creating a new one.
+best trial #31: CV top1 0.8974  {'n_estimators': 410, 'learning_rate': 0.02383815713851495, 'max_depth': 6, 'min_child_weight': 9.88081853847695, 'subsample': 0.7584630444634808, 'colsample_bytree': 0.4093851419076409, 'gamma': 4.850889592318346, 'reg_lambda': 0.17654359345077406, 'reg_alpha': 0.003485620637397462}
+{'model': 'XGBoost (untuned)', 'cv_macro_f1': np.float64(0.9365972229277901), 'cv_top1': np.float64(0.895758567657956), 'cv_top1_std': np.float64(0.017658999619278318), 'cv_log_loss': np.float64(0.0759151540696621), 'cv_continuity': np.float64(0.8181881935396191), 'train_top1': np.float64(0.9479873685196418), 'st_top1': 0.9015358720807911, 'st_macro_f1': 0.9407836528136784, 'st_log_loss': 0.06416887044906616, 'st_precision': 0.907089411638047, 'st_recall': 0.8867080614607451, 'st_continuity': 0.8362204724409449, 'st_obs_macro_f1_arcs': 0.9476228837144589, 'fit_s_all80': 19.9733302500008, 'st_inference_s': 0.2704626249997091, 'infer_ms_per_1k_obs': 14.116003392469159}
+{'model': 'XGBoost (tuned)', 'cv_macro_f1': np.float64(0.9369027230899902), 'cv_top1': np.float64(0.8973612510313014), 'cv_top1_std': np.float64(0.015698358515959646), 'cv_log_loss': np.float64(0.075907401740551), 'cv_continuity': np.float64(0.8212242642198605), 'train_top1': np.float64(0.9073671718269946), 'st_top1': 0.894698085419735, 'st_macro_f1': 0.9371361111063101, 'st_log_loss': 0.06722544878721237, 'st_precision': 0.9008994452523295, 'st_recall': 0.8801831193432962, 'st_continuity': 0.8351863963374755, 'st_obs_macro_f1_arcs': 0.9437222464158319, 'fit_s_all80': 19.739046833999964, 'st_inference_s': 0.2800745420008752, 'infer_ms_per_1k_obs': 14.617669206726264}
+model                 XGBoost (untuned)  XGBoost (tuned)
+cv_macro_f1                      0.9366           0.9369
+cv_top1                          0.8958           0.8974
+cv_top1_std                      0.0177           0.0157
+cv_log_loss                      0.0759           0.0759
+cv_continuity                    0.8182           0.8212
+train_top1                       0.9480           0.9074
+st_top1                          0.9015           0.8947
+st_macro_f1                      0.9408           0.9371
+st_log_loss                      0.0642           0.0672
+st_precision                     0.9071           0.9009
+st_recall                        0.8867           0.8802
+st_continuity                    0.8362           0.8352
+st_obs_macro_f1_arcs             0.9476           0.9437
+fit_s_all80                     19.9733          19.7390
+st_inference_s                   0.2705           0.2801
+infer_ms_per_1k_obs             14.1160          14.6177

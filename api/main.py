@@ -92,7 +92,35 @@ def fmt(x, nd=3):
     return "n/a" if x is None else f"{x:.{nd}f}"
 
 
-def console_line(client, trip_id, n_obs, metrics, ms, status="ok"):
+def hmm_breaks(pred):
+    """Total HMM chain breaks (gap + disconnect) if the pipeline reports them, else None."""
+    h = pred.get("hmm") if isinstance(pred, dict) else None
+    if not isinstance(h, dict):
+        return None
+    import numbers
+    vals = [h.get(k) for k in ("n_gap_breaks", "n_disconnect_breaks")
+            if isinstance(h.get(k), numbers.Real) and not isinstance(h.get(k), bool)]
+    return int(sum(vals)) if vals else None
+
+
+def to_jsonable(x):
+    """numpy scalars/arrays -> plain Python, recursively (the HMM params dict may carry numpy values)."""
+    import numpy as np
+    if isinstance(x, dict):
+        return {str(k): to_jsonable(v) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [to_jsonable(v) for v in x]
+    if isinstance(x, np.ndarray):
+        return to_jsonable(x.tolist())
+    if isinstance(x, np.generic):
+        v = x.item()
+        return None if isinstance(v, float) and v != v else v
+    if isinstance(x, float) and x != x:          # NaN is not valid JSON
+        return None
+    return x
+
+
+def console_line(client, trip_id, n_obs, metrics, ms, status="ok", breaks=None, use_hmm=True):
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if status != "ok":
         print(f"{C['bold']}{C['magenta']}[PathSnap]{C['reset']} {C['grey']}{ts}{C['reset']} | client={client} | "
@@ -103,7 +131,9 @@ def console_line(client, trip_id, n_obs, metrics, ms, status="ok"):
     print(f"{C['bold']}{C['magenta']}[PathSnap]{C['reset']} {C['grey']}{ts}{C['reset']} | "
           f"client={C['cyan']}{client}{C['reset']} | trip={C['bold']}{trip_id}{C['reset']} | n_obs={n_obs} | "
           f"top1={fmt(metrics.get('top1_accuracy'))} | {col}route_f1={fmt(metrics.get('route_f1'), 2)}{C['reset']} | "
-          f"{ms:.0f} ms", flush=True)
+          + ("" if use_hmm else f"{C['yellow']}hmm=off{C['reset']} | ")
+          + ("" if breaks is None else f"hmm_breaks={breaks} | ")
+          + f"{ms:.0f} ms", flush=True)
 
 
 # ------------------------------------------------------------------ app
@@ -177,7 +207,8 @@ def predict(req: PredictRequest, request: Request):
     ms = (time.perf_counter() - t0) * 1e3
     pred["metrics"] = metrics
     pred["server_latency_ms"] = round(ms, 1)
-    console_line(client, req.trip_id, pred["n_obs"], metrics, ms)
-    log.info("client=%s trip=%s n_obs=%d metrics=%s latency_ms=%.1f model=%s",
-             client, req.trip_id, pred["n_obs"], metrics, ms, pred.get("model"))
-    return pred
+    brk = hmm_breaks(pred)
+    console_line(client, req.trip_id, pred["n_obs"], metrics, ms, breaks=brk, use_hmm=req.use_hmm)
+    log.info("client=%s trip=%s use_hmm=%s n_obs=%d metrics=%s hmm_breaks=%s timing_ms=%s latency_ms=%.1f model=%s",
+             client, req.trip_id, req.use_hmm, pred["n_obs"], metrics, brk, pred.get("timing_ms"), ms, pred.get("model"))
+    return to_jsonable(pred)

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PathSnap – Evaluator UI</title>
+  <!-- Leaflet is bundled in ui/vendor so the UI works on a hotspot without internet (map tiles need internet). -->
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">⌖</div>
+    <div>
+      <h1>PathSnap</h1>
+      <p>Map-matching &amp; route reconstruction · UE24CS352A · Section H</p>
+    </div>
+  </div>
+  <div class="team">Samvith Vaddiparthi · Vikas MS · Aditya A Kirankumar · Haneesh E</div>
+</header>
+
+<div id="banner" class="banner hidden" role="alert"></div>
+
+<main>
+  <aside>
+    <section class="panel">
+      <h2>API server</h2>
+      <div class="api-row">
+        <input id="apiUrl" type="text" spellcheck="false" placeholder="http://192.168.x.x:8000">
+        <button id="connectBtn" class="secondary">Connect</button>
+      </div>
+      <div id="apiStatus" class="status"><span class="dot"></span><span class="txt">not connected</span></div>
+    </section>
+
+    <section class="panel grow">
+      <h2>Evaluation trips <span id="tripCount" class="muted"></span></h2>
+      <div id="tripList" class="trip-list"><p class="muted">Connect to the API to load trips.</p></div>
+      <button id="runBtn" class="primary" disabled>Run map-matching</button>
+    </section>
+  </aside>
+
+  <section class="content">
+    <div class="map-wrap">
+      <div id="map"></div>
+      <div id="spinner" class="spinner hidden"><div class="ring"></div><span>Matching trip…</span></div>
+    </div>
+
+    <div class="metrics" id="metrics">
+      <div class="metric"><span class="label">Top-1 accuracy</span><span class="value" id="m-top1">–</span></div>
+      <div class="metric"><span class="label">Macro F1</span><span class="value" id="m-f1">–</span></div>
+      <div class="metric"><span class="label">Route precision</span><span class="value" id="m-prec">–</span></div>
+      <div class="metric"><span class="label">Route recall</span><span class="value" id="m-rec">–</span></div>
+      <div class="metric accent"><span class="label">Route F1</span><span class="value" id="m-rf1">–</span></div>
+      <div class="metric"><span class="label">Continuity</span><span class="value" id="m-cont">–</span></div>
+      <div class="metric"><span class="label">Observations</span><span class="value" id="m-nobs">–</span></div>
+      <div class="metric"><span class="label">Latency (server / total)</span><span class="value" id="m-lat">–</span></div>
+      <div class="metric wide"><span class="label">Model</span><span class="value small" id="m-model">–</span></div>
+    </div>
+  </section>
+</main>
+
+<footer>Metrics are computed on Laptop 1 against the reference route; the reference route itself is never sent to this UI.</footer>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

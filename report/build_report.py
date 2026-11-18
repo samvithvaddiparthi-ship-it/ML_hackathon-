@@ -24,6 +24,7 @@ th { background: #eef3fb; }
 img { max-width: 100%; display: block; margin: 8pt auto 2pt; page-break-inside: avoid; }
 p > em:only-child { display: block; font-size: 9pt; color: #555; text-align: center; margin-bottom: 8pt; }
 code { font-family: Consolas, monospace; font-size: 9pt; background: #f2f4f8; padding: 0 3pt; border-radius: 3px; }
+.wide table { font-size: 7pt; } .wide th, .wide td { padding: 2pt 3pt; }
 .title-page { page-break-after: always; text-align: center; padding-top: 70mm; }
 .title-page h2 { border: 0; font-weight: 500; } .title-page table { width: 60%; margin: 20pt auto; font-size: 11pt; }
 """

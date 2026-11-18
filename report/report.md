@@ -15,20 +15,29 @@ PES University, RR Campus · Department of Computer Science and Engineering · *
 
 Repository: <https://github.com/samvithvaddiparthi-ship-it/ML_hackathon->
 
+*AI-use disclosure: see Section 8.*
+
 </div>
 
 <!-- Writing rule for every section: only numbers produced by scripts in this repo; say which partition
-     (train / student_test) each result uses. Sections marked TODO(A) are filled by the ML-core stream. -->
+     (train / student_test) each result uses. TODO(A) = filled by the ML-core stream after Stages A3–A5.
+     TODO(team) = every member reviews and rewrites in their own words before submission. -->
 
 ## 1. Problem overview
 
-<!-- TODO(team): 1 short paragraph in your own words: noisy GPS -> road arcs per observation -> route; two-laptop system. -->
+A GPS receiver reports one noisy position per second, while the vehicle is always on a road. PathSnap
+assigns every GPS observation to the directed road arc the vehicle was actually on, and joins those arcs into
+a connected route. We frame this as candidate classification: for each observation, the arcs within 50 m are
+candidates, and a classifier estimates the probability that each candidate is the true arc. The best candidate
+gives the observation-level prediction, and HMM/Viterbi decoding uses the probabilities to produce a
+consistent route. The trained system runs behind a FastAPI server on Laptop 1, and the evaluator uses a
+browser UI on Laptop 2.
 
 ## 2.2 Dataset understanding and exploratory data analysis
 
 *Partitions: train (80 trips) and student_test (10 trips). The evaluator-test partition was never used for
-development. Produced by `scripts/01_inventory.py` (Stage 1) and `eda/02_eda.py`; numbers in
-`results/stage1/` and `results/eda/eda_summary.md`.*
+development. Produced by `scripts/01_inventory.py`, `eda/02_eda.py` and `scripts/02_build_dataset.py`; numbers in
+`results/stage1/`, `results/eda/eda_summary.md` and `results/dataset/`.*
 
 ### 2.2.1 Data structure and inventory
 
@@ -95,9 +104,9 @@ non-contiguous steps, so they are treated as imperfect labels.
 ![network stats](../results/eda/fig11_network_size_connectivity.png)
 *Figure 11 – Network size and connectivity [train + student_test].*
 
-Trips are spread over several continents, so all distances are computed in a per-trip azimuthal-equidistant
-projection in metres. Networks range from 649 to 307,392 arcs, about 95 % of arcs have a reverse arc (two-way roads), and
-networks are fragmented into 1 – 421 weakly connected components.
+Trips are spread over several continents. Networks range from 649 to 307,392 arcs, about 95 % of arcs have a
+reverse arc (two-way roads are stored as two directed arcs), and networks are fragmented into 1 – 421 weakly
+connected components.
 
 ### 2.2.6 Folium map
 
@@ -108,71 +117,332 @@ route, layer control and legend. Interactive version: `results/maps/eda_student_
 
 ### 2.2.7 Preprocessing and feature engineering
 
-<!-- TODO(A): how labels were aligned to the route, candidate generation (radius from §2.2.4), the features
-     extracted and WHY each one (distance, heading difference, speed, gap flags, ...). -->
+**Q1 – How did we preprocess the data?**
+
+1. **Projection.** All coordinates of a trip are projected with an azimuthal-equidistant projection centred on
+   the trip (`pathsnap.geo.make_projector`). Trips are spread across many countries, so no single UTM zone fits,
+   while a per-trip projection keeps distance errors far below the 5 m GPS noise. All distances and headings
+   are then computed in metres.
+2. **No cleaning by deletion.** There are no missing values (§2.2.2). Jumps and gaps are kept, because the API
+   must return an arc for every observation; they are encoded as features instead (`jump`, `dt_prev`, `dt_next`).
+3. **Per-observation labels** (`pathsnap.labels`). The `.route` file lists arcs, not one arc per GPS point. Each
+   observation is therefore aligned to the route by a monotone dynamic-programming alignment: the route index
+   may only stay or advance, which resolves loops and parallel roads. Points more than 30 m from their aligned
+   arc get no label and are excluded from training and scoring. This removes the truncated-route tails found in
+   §2.2.4. 87.5 % of train and 99.2 % of student_test observations are labelled.
+4. **Candidate generation** (`RoadNet.candidates`). For each observation we keep the arcs within 50 m, at most 12.
+   The radius follows from §2.2.4: on train, 30 m already covers 100 % of labelled points
+   (`results/dataset/radius_study.csv`), and 50 m adds a safety margin. This gives 6.6 (train) and 7.7
+   (student_test) candidates per observation. The true arc is missing from the candidate set for only 0.19 %
+   (train) and 0.04 % (student_test) of labelled observations.
+
+**Q2 – Patterns observed and features extracted.** Each EDA finding motivated a group of the 25 features in
+`pathsnap/features.py`. All of them are independent of the trip, using no absolute coordinates or ids, so a
+model trained on 80 cities transfers to unseen ones.
+
+| EDA observation | Feature group (features) | Why |
+|---|---|---|
+| GPS noise ≈ 5 m median, 17 m p95 (§2.2.4) | geometric: `dist`, `dist_rank`, `dist_minus_min`, `dist_ratio_min`, `gauss_norm` (σ = 5 m), `t_along`, `arc_len` | how plausible the candidate is given the noise level, relative to the other candidates |
+| ≈ 95 % of arcs have a reverse arc (§2.2.5) | direction: `cos_head`, `abs_cos_head`, `head_reliab`, `has_reverse_cand` | both directions of a two-way road are equally close, and only the travel heading separates them |
+| 1 Hz trajectories follow a road for many seconds (§2.2.3) | temporal: `win2_mean/max`, `win5_mean/max`, `win5_rank` (distance of neighbouring points i ± 2 / ± 5 to the same arc) | one noisy point can look closer to a side road, but its neighbours show which road the track follows |
+| gaps, down-sampling, jumps (§2.2.3–4) | kinematics: `speed`, `dt_prev`, `dt_next`, `jump` | tell the model when heading and neighbours are unreliable |
+| fragmented networks, junctions (§2.2.5) | topology / context: `out_deg_v`, `in_deg_u`, `cont_prev`, `cont_next`, `n_cand` | connectivity with the neighbours' nearest arcs; density of the local network |
+
+A nearest-arc rule reaches only 56.2 % (train) and 54.0 % (student_test) Top-1. This is mainly because both
+directions of a two-way road are equally near, which is why the direction and temporal features matter.
 
 ## 3. Model experimentation and comparison
 
+**Protocol** (`scripts/03_train_models.py`, identical for every model). Cross-validation is GroupKFold(5) over the
+80 **train** trips, so a trip is never in both the training and validation folds. Models are fitted on the
+labelled candidate rows of 4 folds and evaluated on the held-out trips. For student-test evaluation, each model
+is refitted on all 80 train trips and evaluated once on the 10 **student_test** trips. Student-test results
+were not used to choose or tune any model.
+
+**Metrics.** **Top-1 accuracy** is measured per observation: the share of labelled observations whose
+highest-scoring candidate is the true arc. **Macro-F1** in the model tables is the candidate-level binary
+macro-F1, at threshold 0.5, of the "is this the true arc" classifier. We also report the observation-level
+macro-F1 over arc ids, which is what the API's `score_trip` returns. **Log loss** is the binary cross-entropy of
+the candidate probabilities. **Route continuity** is the share of consecutive predicted route arcs that are
+connected head-to-tail. **Inference time** is ms per 1,000 GPS observations on student_test, for scoring only,
+measured on the training machine (`st_infer_ms_per_1k_obs`).
+
+**Primary metric.** CV Top-1 is the selection metric, because the route is built from per-observation Top-1
+choices. CV log loss is the tie-breaker, because the probabilities become HMM emission probabilities, so
+calibration matters.
+
 ### 3.1 Overall model comparison
 
-<!-- TODO(A): fill from results/models/*.csv – actual numbers only; N/A with reason where not applicable. -->
+<div class="wide" markdown="1">
 
-| Model | Algorithm family | Key configuration | CV macro F1 | Student-test Top-1 | Route continuity | Student-test macro F1 | Log loss | Inference time |
-|---|---|---|---|---|---|---|---|---|
-| Model 1 | | | | | | | | |
-| Model 2 | | | | | | | | |
-| Model 3 | | | | | | | | |
-| Model 4 | | | | | | | | |
-| Model 5 | | | | | | | | |
+| Model | Family | Key configuration | CV macro-F1 (± std) | CV Top-1 (± std) | ST Top-1 | ST route continuity | ST macro-F1 (candidate / obs-arc) | ST log loss (CV) | Inference ms / 1k obs |
+|---|---|---|---|---|---|---|---|---|---|
+| **XGBoost** | Boosting | hist, 400 rounds, lr 0.05, depth 8, subsample/colsample 0.8 | 0.9366 ± 0.0094 | **0.8958 ± 0.0177** | 0.9015 | **0.836** | 0.9408 / 0.9476 | 0.0642 (**0.0759**) | 12.2 |
+| LightGBM | Boosting | 400 rounds, lr 0.05, 63 leaves, min_child 50, subsample/colsample 0.8 | 0.9366 ± 0.0095 | 0.8953 ± 0.0183 | **0.9034** | 0.832 | 0.9407 / 0.9473 | 0.0640 (0.0762) | 46.3 |
+| RandomForest | Bagging | 150 trees, min_leaf 5, max_features √, max_samples 0.25 | 0.9340 ± 0.0095 | 0.8945 ± 0.0162 | 0.8946 | 0.826 | 0.9354 / 0.9435 | 0.0687 (0.0798) | 18.5 |
+| DecisionTree | Tree | CART gini, max_depth 12, min_leaf 50 | 0.9312 ± 0.0089 | 0.8891 ± 0.0180 | 0.8941 | 0.818 | 0.9329 / 0.9442 | 0.0768 (0.0931) | 0.30 |
+| MLP | Neural net | 25-64-32-1 ReLU, Adam lr 1e-3, α 1e-4, batch 2048, 20 epochs | 0.9295 ± 0.0091 | 0.8889 ± 0.0169 | 0.8941 | 0.816 | 0.9328 / 0.9339 | 0.0723 (0.0849) | 1.36 |
+| LogisticRegression | Linear | scaled, L2, C 1.0, lbfgs | 0.9128 ± 0.0075 | 0.8749 ± 0.0167 | 0.8631 | 0.782 | 0.9111 / 0.8906 | 0.1004 (0.1114) | 0.36 |
+| KNN | Instance-based | scaled, k 25, distance-weighted; fit on 150k-row subsample | 0.9161 ± 0.0100 | 0.8734 ± 0.0177 | 0.8664 | 0.807 | 0.9152 / 0.9077 | 0.1194 (0.1317) | 798 |
+| GaussianNB | Probabilistic | var_smoothing 1e-9 | 0.7803 ± 0.0135 | 0.7770 ± 0.0682 | 0.7537 | 0.800 | 0.7827 / 0.8338 | 1.2477 (1.3767) | 0.79 |
+
+</div>
+
+*Table 1 – Source: `results/models/comparison.csv`, `cv_folds.csv`, `model_configs.json`. CV = mean of 5 GroupKFold
+folds on train; ST = student_test. For reference, the nearest-arc baseline reaches 54.0 % ST Top-1. Every
+metric applies to every model, so there are no N/A cells. KNN is the only model fitted on a 150,000-row
+subsample, because its prediction cost grows with the size of the training set.*
+
+**Selection.** XGBoost has the best CV Top-1 (the primary metric) and the best CV log loss, and it scores 4×
+faster than LightGBM. LightGBM is 0.2 points higher on student_test Top-1, but that gap is smaller than one
+fold standard deviation (≈ 1.8 points), and we deliberately did not select on the test partition. XGBoost
+therefore goes to Bayesian optimisation (§4).
 
 ### 3.2 Per-model analysis
 
-<!-- TODO(A): one subsection per model, answering A (why suitable, strengths/limits), B (hyperparameters and
-     initial values, loss/objective), C (student-test results, Top-1 / macro F1 / log loss, over/underfitting evidence). -->
+Train-vs-CV numbers are the mean over the 5 folds of Top-1 on the fold's own training trips and on its held-out
+trips (Figure 17).
 
-#### 3.2.1 Model 1 – …
-#### 3.2.2 Model 2 – …
-#### 3.2.3 Model 3 – …
-#### 3.2.4 Model 4 – …
-#### 3.2.5 Model 5 – …
+#### 3.2.1 Logistic regression
+* **A1 – Why suitable.** A linear model of the 25 standardised features is the simplest probabilistic baseline,
+  and it shows how much of the problem is linearly separable.
+* **A2 – Strengths / limits.** It is fast (0.36 ms / 1k obs), its probabilities are well behaved, and there is
+  essentially no overfitting. It cannot model interactions, though: a small `dist` should count for more when
+  `head_reliab` is high. It ends 2.1 points below XGBoost in CV Top-1.
+* **B5 – Hyper-parameters.** StandardScaler, L2 penalty, C = 1.0, lbfgs, max_iter = 500 (initial and final values).
+* **B6 – Objective.** Binary cross-entropy plus an L2 penalty.
+* **C7/C8 – Student-test.** Top-1 0.8631, candidate macro-F1 0.9111, observation-level macro-F1 0.8906, log loss 0.1004, continuity 0.782.
+* **C9 – Fit.** Train 0.8759 vs CV 0.8749: a gap of 0.001, which means **mild underfitting**. The model has too
+  little capacity, not too much.
+
+#### 3.2.2 Gaussian Naive Bayes
+* **A1 – Why suitable.** It is a fast generative baseline that models each feature as Gaussian given the class.
+* **A2 – Strengths / limits.** It trains in 0.17 s, but it assumes the features are independent within each
+  class. Our features are strongly correlated: on a 300k-row train sample, `dist`/`win2_mean` have |r| = 0.93 and
+  `win2_max`/`win5_mean` 0.93, and 7 of the 300 feature pairs exceed 0.8. The model therefore counts the same
+  evidence several times and becomes over-confident.
+* **B5 – Hyper-parameters.** var_smoothing = 1e-9 (default).
+* **B6 – Objective.** Maximum-likelihood estimates of the class priors and the per-class Gaussian means and
+  variances. There is no iterative loss.
+* **C7/C8 – Student-test.** Top-1 0.7537, candidate macro-F1 0.7827, observation-level macro-F1 0.8338, log loss
+  1.2477, the worst by a factor of 10. Recall is 0.94 but precision only 0.49: 18,474 false positives against
+  1,051 false negatives (Figure 19).
+* **C9 – Fit.** Train 0.7753 vs CV 0.7770, so there is no overfitting, but the model is **unstable across trips**.
+  Its fold standard deviation is 0.068, about 3.7× that of the next-worst model (0.018), and fold 4 falls to 0.6617 while
+  the other folds reach 0.77–0.83 (Figure 16). This is model misspecification (underfitting), not variance from
+  too little data.
+
+#### 3.2.3 K-nearest neighbours
+* **A1 – Why suitable.** Similar candidate situations (distance, heading, neighbours' support) should get similar
+  labels, and KNN uses that directly, with no parametric form.
+* **A2 – Strengths / limits.** It needs no training and makes no distributional assumptions. Prediction is
+  slow, though: 798 ms per 1k observations, about 65× slower than XGBoost (Figure 18). Memory and time limits
+  forced a 150k-row training subsample, and its probabilities are poorly calibrated (log loss 0.1194).
+* **B5 – Hyper-parameters.** StandardScaler, k = 25, distance weighting, Euclidean metric, 150k-row random subsample.
+* **B6 – Objective.** None: a lazy learner predicts by a distance-weighted vote of the 25 nearest training rows.
+* **C7/C8 – Student-test.** Top-1 0.8664, candidate macro-F1 0.9152, observation-level macro-F1 0.9077, log loss 0.1194, continuity 0.807.
+* **C9 – Fit.** Train 0.9168 vs CV 0.8734, a gap of 0.043: **overfitting**. Distance weighting gives nearby
+  training rows a very high weight, and the subsample limits how well the model generalises.
+
+#### 3.2.4 Decision tree
+* **A1 – Why suitable.** Axis-aligned thresholds ("dist < x and cos_head > y") match how a human would rank
+  candidates, and they capture interactions that logistic regression cannot.
+* **A2 – Strengths / limits.** It is the fastest model at inference (0.30 ms / 1k obs) and it is interpretable.
+  A single tree has high variance and coarse, step-like probabilities (CV log loss 0.0931 vs 0.0759 for XGBoost).
+* **B5 – Hyper-parameters.** CART, gini, max_depth = 12, min_samples_leaf = 50 (initial = final).
+* **B6 – Objective.** Greedy minimisation of Gini impurity at each split.
+* **C7/C8 – Student-test.** Top-1 0.8941, candidate macro-F1 0.9329, observation-level macro-F1 0.9442, log loss 0.0768, continuity 0.818.
+* **C9 – Fit.** Train 0.9128 vs CV 0.8891, a gap of 0.024: **mild overfitting**, limited by the depth and leaf-size caps.
+
+#### 3.2.5 Random forest
+* **A1 – Why suitable.** Bagging many decorrelated trees reduces a single tree's variance while keeping its
+  ability to model interactions.
+* **A2 – Strengths / limits.** It is the most stable model across folds (CV Top-1 standard deviation 0.0162, the
+  lowest) and it is robust to feature scale. It is the slowest model to train (54 s on all train trips) and
+  needs 18.5 ms / 1k obs at inference.
+* **B5 – Hyper-parameters.** 150 trees, max_depth = None, min_samples_leaf = 5, max_features = √25, max_samples = 0.25.
+* **B6 – Objective.** Gini impurity per tree; probabilities are averaged over the trees.
+* **C7/C8 – Student-test.** Top-1 0.8946, candidate macro-F1 0.9354, observation-level macro-F1 0.9435, log loss 0.0687, continuity 0.826.
+* **C9 – Fit.** Train 0.9303 vs CV 0.8945, a gap of 0.036: **moderate overfitting** from the fully grown trees.
+
+#### 3.2.6 LightGBM
+* **A1 – Why suitable.** Gradient-boosted trees are the standard strong learner for tabular features with
+  interactions, and they directly optimise log loss, which the HMM needs.
+* **A2 – Strengths / limits.** It has the best student_test Top-1 (0.9034) and log loss (0.0640), and it trains
+  fast (15.9 s). Its leaf-wise trees overfit without early stopping, and inference costs 46.3 ms / 1k obs, the
+  second slowest.
+* **B5 – Hyper-parameters.** 400 rounds, learning rate 0.05, num_leaves 63, min_child_samples 50, subsample 0.8 (every round), colsample_bytree 0.8.
+* **B6 – Objective.** Binary log loss, optimised by gradient boosting.
+* **C7/C8 – Student-test.** Top-1 0.9034, candidate macro-F1 0.9407, observation-level macro-F1 0.9473, log loss 0.0640, continuity 0.832.
+* **C9 – Fit.** Train 0.9434 vs CV 0.8953, a gap of 0.048: **overfitting**. In the fold-0 loss curve (Figure 20),
+  validation log loss reaches its minimum of 0.0828 at round 128 and rises to 0.0855 by round 400, while training
+  loss keeps falling (0.0606 at round 120, 0.0449 at round 400). Beyond about 130 rounds the model fits noise.
+
+#### 3.2.7 XGBoost (selected)
+* **A1 – Why suitable.** It is the same family as LightGBM, with depth-wise trees and second-order optimisation
+  of log loss. Its calibrated probabilities feed straight into the HMM emissions.
+* **A2 – Strengths / limits.** It has the best CV Top-1 (0.8958) and CV log loss (0.0759), and the best student_test
+  continuity (0.836), at 12.2 ms / 1k obs, 4× faster than LightGBM. Like LightGBM, it overfits at 400 rounds
+  without tuning.
+* **B5 – Hyper-parameters (initial, before §4).** tree_method hist, n_estimators 400, learning_rate 0.05,
+  max_depth 8, subsample 0.8, colsample_bytree 0.8, and defaults min_child_weight 1, reg_lambda 1, gamma 0.
+* **B6 – Objective.** Binary log loss (`eval_metric = logloss`), plus an L2 penalty on the leaf weights, optimised
+  with gradient and Hessian information.
+* **C7/C8 – Student-test.** Top-1 0.9015, candidate macro-F1 0.9408, observation-level macro-F1 0.9476, log loss
+  0.0642, continuity 0.836. Confusion matrix (candidate level, threshold 0.5): TN 125,528, FP 1,726, FN 2,153,
+  TP 16,851.
+* **C9 – Fit.** Train 0.9480 vs CV 0.8958, a gap of 0.052, the largest: **overfitting**. Validation log loss
+  bottoms at 0.0815 at round 120 and rises to 0.0855 at round 400, while training loss falls to 0.0429
+  (Figure 20). This is the main target for Bayesian optimisation: the number of rounds, depth and regularisation.
+
+#### 3.2.8 Multi-layer perceptron
+* **A1 – Why suitable.** A small neural network learns smooth non-linear interactions between the standardised
+  features, and it produces genuine epoch-by-epoch training histories.
+* **A2 – Strengths / limits.** It is fast at inference (1.36 ms / 1k obs) and its probabilities are smooth. It is
+  sensitive to scaling and the learning rate, and with 20 epochs it stays 0.7 points below XGBoost in CV Top-1.
+* **B5 – Hyper-parameters.** StandardScaler, layers 25-64-32-1, ReLU, Adam, lr 1e-3, L2 α = 1e-4, batch 2048,
+  20 epochs (trained with `partial_fit` so that the losses are recorded every epoch).
+* **B6 – Objective.** Binary cross-entropy plus an L2 penalty, minimised with Adam.
+* **C7/C8 – Student-test.** Top-1 0.8941, candidate macro-F1 0.9328, observation-level macro-F1 0.9339, log loss 0.0723, continuity 0.816.
+* **C9 – Fit.** Train 0.9060 vs CV 0.8889, a gap of 0.017: **slight overfitting**. In Figure 20, validation log
+  loss drops from 0.1016 (epoch 1) to 0.0913 (epoch 6), then stays flat at about 0.090–0.093 (best 0.0898 at
+  epoch 16), while training loss keeps falling to 0.070. After about 6 epochs there is no further gain.
 
 ### 3.3 Model visualisations
 
-<!-- TODO(A): CV macro-F1 comparison, student-test Top-1 & macro-F1 comparison, log-loss comparison,
-     optional confusion matrices, loss curves ONLY for models with real epoch histories. -->
+![cv macro f1](../results/models/plots/01_cv_macro_f1.png)
+*Figure 13 – CV macro-F1 (candidate level), mean ± std of 5 GroupKFold folds [train].*
+
+![st top1 f1](../results/models/plots/02_student_test_top1_macro_f1.png)
+*Figure 14 – Top-1 accuracy and macro-F1 [student_test].*
+
+![log loss](../results/models/plots/03_log_loss.png)
+*Figure 15 – Log loss, CV [train] and student-test [student_test], log scale.*
+
+![fold stability](../results/models/plots/04_cv_fold_stability.png)
+*Figure 16 – Top-1 on each held-out fold [train]: GaussianNB's fold 4 outlier.*
+
+![train vs cv](../results/models/plots/05_train_vs_cv_top1.png)
+*Figure 17 – Training-fold vs held-out-fold Top-1, an over/underfitting check [train].*
+
+![accuracy vs time](../results/models/plots/06_accuracy_vs_inference_time.png)
+*Figure 18 – Student-test Top-1 vs inference time per 1,000 observations [student_test].*
+
+![confusion](../results/models/plots/07_confusion_matrices.png)
+*Figure 19 – Candidate-level confusion matrices at threshold 0.5 [student_test].*
+
+![training curves](../results/models/plots/08_training_curves.png)
+*Figure 20 – Real training vs validation log loss, CV fold 0 (64 train / 16 validation trips) [train]. Only the
+models with an iterative training history are shown (LightGBM and XGBoost by round, MLP by epoch).*
+
+### 3.4 Error analysis of the selected model
+
+*Partition: student_test (19,012 labelled observations). Script `analysis/error_analysis.py`, outputs in
+`results/analysis/`. The scores come from the saved `artifacts/models/XGBoost.joblib`, applied to regenerated
+candidate tables, which gives Top-1 0.9003 (Table 1: 0.9015; the 0.1-point difference comes from regenerating
+the candidates on a different machine).*
+
+![breakdowns](../results/analysis/fig_b7_breakdowns.png)
+*Figure 21 – XGBoost vs nearest-arc Top-1 by condition [student_test].*
+
+![trips and errors](../results/analysis/fig_b7_trips_and_error_types.png)
+*Figure 22 – Top-1 per trip and taxonomy of the 1,896 errors [student_test].*
+
+* **Speed and heading drive the errors.** Top-1 is 96.7 % above 8 m/s, but 75.9 % at 1–8 m/s. These slow
+  observations are 30.1 % of the data and hold 72.8 % of all errors. When heading reliability is low, Top-1 falls
+  to 60.1 %.
+* **50.5 % of errors are "right street, wrong direction"**: the predicted arc is the reverse of the true one. These
+  are short flips (465 runs, median length 1 observation, longest 23), not long wrong stretches. A further 33.6 %
+  pick an arc that shares a node with the true arc: Top-1 is 84.6 % near arc ends vs 91.5 % mid-arc, and 85.6 %
+  at junctions. Only 8 errors are candidate-generation misses.
+* **One trip dominates.** Trip 00000077 holds 49.4 % of all errors (Top-1 76.0 %, 739 reverse-direction errors).
+  It is a slow trip, with a median speed of 5.5 m/s. The other nine trips range from 86.7 % to 98.0 %.
+* Dense networks are harder: Top-1 is 98.8 % with 1–3 candidates and 83.0 % with 10–12.
+* Most of these errors are isolated flips while the street itself is right. They are exactly what a transition
+  model over connected, consistently directed arcs should correct (§5).
 
 ## 4. Bayesian hyperparameter optimisation
 
 <!-- TODO(A): parameters searched, ranges/distributions, objective, number of trials, best values,
-     untuned vs tuned table (CV macro F1, student-test Top-1, student-test macro F1, log loss, inference time). -->
+     untuned vs tuned table (CV macro F1, student-test Top-1, student-test macro F1, log loss, inference time).
+     Untuned baseline row = XGBoost in Table 1. -->
 
 ## 5. HMM and Viterbi route reconstruction
 
 <!-- TODO(A): hidden states, emission and transition probabilities, missing candidates / large gaps, disconnected
-     segments, classifier-only vs classifier+HMM comparison (table + maps from viz/folium_maps.make_trip_map),
-     cases where HMM did not help. -->
+     segments, classifier-only vs classifier+HMM comparison table, cases where the HMM did not help.
+     Use §3.4: reverse-direction flips (50.5 % of errors) and trip 00000077 as the test of whether the HMM helps.
+     Maps: python viz/make_route_maps.py --all-student-test -> results/maps/<id>_routes.png -->
 
 ## 6. Geographical visualisation using Folium
 
-All maps are produced by `viz/folium_maps.py` (`make_trip_map`). Layers use fixed colours: GPS observations
-blue dots, nearby road network grey, reference route green, classifier-only route orange dashed and the final
-(HMM) route red. Each map has a layer control, a legend, start/end markers, and bounds fitted to the trip.
+All maps are generated by our own code. `viz/folium_maps.py` (`make_trip_map`, `network_segments_near`) is the
+shared map builder, used by the EDA (`eda/02_eda.py`, Figure 12) and by the route-comparison tool
+`viz/make_route_maps.py`. For any trip, that tool runs the deployed pipeline (`predict_trip(use_hmm=True)`) and
+draws five layers with fixed, distinguishable styles:
 
-<!-- TODO(A/B): insert the classifier-only vs HMM comparison map screenshot(s) for 1–2 student_test trips. -->
+| Layer | Style | Source |
+|---|---|---|
+| Original GPS observations | blue dots, green start and red end markers | `.track` |
+| Relevant road network | thin grey lines, arcs within 150 m of the track | `.nodes` / `.arcs` |
+| Reference route | wide green line | `.route` (report maps only, never sent to the UI) |
+| Classifier-only route | orange dashed line | `route_coords_classifier_only` |
+| HMM / predicted route | red line on top | `route_coords` |
+
+Every map has a layer control (each layer can be switched off), a fixed legend, a title
+with the trip, model and route F1, and bounds fitted to the GPS track, so the extent and zoom match the trip.
+Drawing the prediction on top of the wide reference line makes deviations easy to see.
+`python viz/make_route_maps.py --all-student-test` writes `results/maps/<trip>_routes.html` and a PNG for all 10
+student_test trips.
+
+<!-- TODO(A/B, after A4): insert 1–2 screenshots, e.g. trip 00000077 (most direction flips, §3.4) and one clean trip. -->
 
 ## 7. API, UI and deployment
 
-* **API (Laptop 1):** FastAPI, `api/main.py`. `GET /health`, `GET /trips`, `POST /predict {trip_id}`. The
-  prediction pipeline never reads the reference route. Scoring happens on the server, and the response contains
-  only metric values, never reference arcs or reference geometry. Every request prints one log line on the
-  Laptop 1 console and is also written to `api/logs/api.log`.
-* **UI (Laptop 2):** static page in `ui/` (Leaflet bundled locally), served with `python -m http.server 5500`.
-  It lists the evaluation trips, calls `/predict` and shows the GPS points, predicted route, Top-1 accuracy,
-  macro F1, route precision / recall / F1, continuity, number of observations and latency.
-* **Deployment:** `deploy/DEPLOYMENT.md`, `deploy/run_api.*`, `deploy/run_ui.*`, `deploy/open_firewall.bat`.
+![architecture](figures/architecture.svg)
+*Figure 23 – Two-laptop deployment architecture.*
 
-<!-- TODO(B): screenshot of the UI after a run (Laptop 2) -->
-<!-- TODO(B): screenshot of the Laptop 1 console with [PathSnap] request lines -->
+**API (Laptop 1, `api/main.py`, FastAPI + Uvicorn on 0.0.0.0:8000, Swagger UI at `/docs`).**
+
+| Method | Path | Request | Response |
+|---|---|---|---|
+| GET | `/health` | – | `{"status":"ok","model":{"name","version"}}` |
+| GET | `/trips` | – | `{"trips":[{"trip_id","n_obs"}]}` from the folders in `PATHSNAP_EVAL_DATA` |
+| POST | `/predict` | `{"trip_id":"…","use_hmm":true}` | `predict_trip` output + `metrics` + `server_latency_ms` |
+
+* **Request handling.** A trip id must match `^[0-9A-Za-z_-]+$`, so path traversal is impossible. An unknown id
+  returns 404. A pipeline exception returns 500 with its message, and the server keeps running.
+* **Logging.** Each request prints one coloured line on the Laptop 1 console, e.g.
+  `[PathSnap] … | client=192.168.x.x | trip=00000052 | n_obs=262 | top1=… | route_f1=… | … ms`. Full metrics are
+  also written to the rotating log file `api/logs/api.log`. At start-up the console prints the trip folder,
+  the number of trips found and the LAN address to enter in the UI.
+* **Leakage safeguards.**
+  * `predict_trip` loads the trip with `with_route=False`, so the `.route` file is never read during prediction.
+  * Only `score_trip` reads the reference route, on the server, and it returns numbers only.
+  * Before responding, the API removes any key that could carry reference data (`route`, `reference*`, `ref_*`).
+  * `api/test_api.py` asserts for every trip that no such key is present, and the UI has no code path that draws a
+    reference route.
+
+**UI (Laptop 2, `ui/`).** A static HTML/JS/CSS page with no build step, served by `python -m http.server 5500`.
+Leaflet is bundled in `ui/vendor/`, so the page works on a hotspot without internet; only the background tiles
+need it. The page has:
+* an API-URL field, remembered in the browser, with a connection status indicator;
+* a list of the evaluation trips from `GET /trips`, and a Run button that calls `POST /predict`, with a spinner;
+* a Leaflet map with the GPS points (blue), the predicted route (red), the classifier-only route when available,
+  a layer control and a legend, fitted to the trip's bounds;
+* metric cards for Top-1 accuracy, macro-F1, route precision, recall and F1, continuity, number of observations,
+  server and total latency, and model name;
+* an error banner when the API is unreachable or a request fails.
+
+**Deployment.** `deploy/DEPLOYMENT.md` and `deploy/DEMO_CHECKLIST.md` cover the steps:
+* Put both laptops on the same Wi-Fi or phone hotspot.
+* Run `deploy\open_firewall.bat` once on Laptop 1.
+* On Laptop 1, run `deploy\run_api.bat "<evaluator trips folder>"`.
+* On Laptop 2, run `deploy\run_ui.bat http://<Laptop-1-IP>:8000`.
+* Before the demo, `api/test_api.py` checks all trips end to end.
+
+<!-- TODO(B10, at the two-laptop rehearsal): screenshot of the UI after a run (Laptop 2) -->
+<!-- TODO(B10): screenshot of the Laptop 1 console with [PathSnap] request lines -->
 
 ## 8. Team contributions and AI-use disclosure
 
@@ -183,7 +453,7 @@ blue dots, nearby road network grey, reference route green, classifier-only rout
 | Aditya A Kirankumar (PES1UG24AM470) | <!-- TODO --> |
 | Haneesh E (PES1UG24AM471) | <!-- TODO --> |
 
-**AI assistance.** AI coding assistants were used for code scaffolding, debugging and drafting parts of the
-documentation. All experiments were run by the team on the provided data, every number and figure in this report
-comes from scripts in the repository, and every team member can explain the code and results.
-<!-- TODO(team): adjust to the event's exact AI-disclosure wording. -->
+**AI assistance.** AI coding assistants were used for code scaffolding, debugging and drafting parts of this
+report. All experiments were run by the team on the provided data, every number and figure comes from scripts
+in the repository, and every team member can explain the code and results.
+<!-- TODO(team): adjust to the event's exact AI-disclosure wording; rewrite AI-drafted prose in your own words. -->

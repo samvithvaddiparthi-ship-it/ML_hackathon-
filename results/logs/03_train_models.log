@@ -1,0 +1,68 @@
+=== LogisticRegression
+  fold 0: top1=0.8558 mF1=0.9077 ll=0.1191 train_top1=0.8803 (1.0s)
+  fold 1: top1=0.8670 mF1=0.9076 ll=0.1087 train_top1=0.8783 (1.2s)
+  fold 2: top1=0.8693 mF1=0.9076 ll=0.1017 train_top1=0.8775 (1.2s)
+  fold 3: top1=0.8992 mF1=0.9243 ll=0.0991 train_top1=0.8695 (1.2s)
+  fold 4: top1=0.8830 mF1=0.9165 ll=0.1284 train_top1=0.8741 (1.2s)
+  student-test: top1=0.8631 mF1=0.9111 ll=0.1004 cont=0.7820 infer=0.01s
+=== GaussianNB
+  fold 0: top1=0.7727 mF1=0.7750 ll=1.4404 train_top1=0.7776 (0.1s)
+  fold 1: top1=0.8229 mF1=0.7905 ll=0.9759 train_top1=0.7774 (0.1s)
+  fold 2: top1=0.7983 mF1=0.7854 ll=1.1353 train_top1=0.7663 (0.1s)
+  fold 3: top1=0.8293 mF1=0.7915 ll=1.2522 train_top1=0.7588 (0.1s)
+  fold 4: top1=0.6617 mF1=0.7592 ll=2.0799 train_top1=0.7967 (0.1s)
+  student-test: top1=0.7537 mF1=0.7827 ll=1.2477 cont=0.7995 infer=0.02s
+=== KNN
+  fold 0: top1=0.8617 mF1=0.9141 ll=0.1416 train_top1=0.9168 (0.0s)
+  fold 1: top1=0.8684 mF1=0.9135 ll=0.1272 train_top1=0.9197 (0.0s)
+  fold 2: top1=0.8572 mF1=0.9048 ll=0.1198 train_top1=0.9203 (0.0s)
+  fold 3: top1=0.9020 mF1=0.9324 ll=0.1114 train_top1=0.9124 (0.0s)
+  fold 4: top1=0.8775 mF1=0.9158 ll=0.1586 train_top1=0.9146 (0.0s)
+  student-test: top1=0.8664 mF1=0.9152 ll=0.1194 cont=0.8073 infer=15.29s
+=== DecisionTree
+  fold 0: top1=0.8729 mF1=0.9268 ll=0.0963 train_top1=0.9152 (16.2s)
+  fold 1: top1=0.8839 mF1=0.9297 ll=0.0883 train_top1=0.9167 (15.5s)
+  fold 2: top1=0.8810 mF1=0.9252 ll=0.0875 train_top1=0.9175 (14.2s)
+  fold 3: top1=0.9198 mF1=0.9468 ll=0.0770 train_top1=0.9022 (16.7s)
+  fold 4: top1=0.8880 mF1=0.9276 ll=0.1165 train_top1=0.9125 (14.6s)
+  student-test: top1=0.8941 mF1=0.9329 ll=0.0768 cont=0.8182 infer=0.01s
+=== RandomForest
+  fold 0: top1=0.8767 mF1=0.9292 ll=0.0862 train_top1=0.9311 (38.1s)
+  fold 1: top1=0.8927 mF1=0.9340 ll=0.0738 train_top1=0.9323 (43.0s)
+  fold 2: top1=0.8878 mF1=0.9258 ll=0.0754 train_top1=0.9328 (44.8s)
+  fold 3: top1=0.9208 mF1=0.9501 ll=0.0658 train_top1=0.9250 (41.9s)
+  fold 4: top1=0.8945 mF1=0.9312 ll=0.0979 train_top1=0.9304 (44.9s)
+  student-test: top1=0.8946 mF1=0.9354 ll=0.0687 cont=0.8260 infer=0.35s
+=== LightGBM
+  fold 0: top1=0.8725 mF1=0.9278 ll=0.0855 train_top1=0.9449 (13.6s)
+/Users/samvithvaddiparthi/ML_hackathon-/.venv/lib/python3.12/site-packages/lightgbm/sklearn.py:1106: LGBMDeprecationWarning: The argument 'eval_set' is deprecated, use 'eval_X' and 'eval_y' instead.
+  eval_set = _validate_eval_set_Xy(eval_set=eval_set, eval_X=eval_X, eval_y=eval_y)
+  fold 1: top1=0.8961 mF1=0.9366 ll=0.0693 train_top1=0.9449 (14.3s)
+  fold 2: top1=0.8877 mF1=0.9310 ll=0.0713 train_top1=0.9470 (14.1s)
+  fold 3: top1=0.9229 mF1=0.9525 ll=0.0594 train_top1=0.9379 (13.7s)
+  fold 4: top1=0.8971 mF1=0.9350 ll=0.0953 train_top1=0.9426 (13.7s)
+  student-test: top1=0.9034 mF1=0.9407 ll=0.0640 cont=0.8315 infer=0.89s
+=== XGBoost
+  fold 0: top1=0.8737 mF1=0.9281 ll=0.0855 train_top1=0.9485 (13.3s)
+  fold 1: top1=0.8967 mF1=0.9369 ll=0.0692 train_top1=0.9496 (13.1s)
+  fold 2: top1=0.8896 mF1=0.9320 ll=0.0701 train_top1=0.9513 (12.9s)
+  fold 3: top1=0.9226 mF1=0.9524 ll=0.0589 train_top1=0.9424 (13.4s)
+  fold 4: top1=0.8961 mF1=0.9336 ll=0.0958 train_top1=0.9481 (13.4s)
+  student-test: top1=0.9015 mF1=0.9408 ll=0.0642 cont=0.8362 infer=0.23s
+=== MLP
+  fold 0: top1=0.8702 mF1=0.9250 ll=0.0917 train_top1=0.9077 (21.4s)
+  fold 1: top1=0.8885 mF1=0.9296 ll=0.0787 train_top1=0.9082 (17.9s)
+  fold 2: top1=0.8806 mF1=0.9213 ll=0.0816 train_top1=0.9095 (17.8s)
+  fold 3: top1=0.9157 mF1=0.9448 ll=0.0697 train_top1=0.8998 (18.6s)
+  fold 4: top1=0.8895 mF1=0.9267 ll=0.1029 train_top1=0.9050 (19.4s)
+  student-test: top1=0.8941 mF1=0.9328 ll=0.0723 cont=0.8159 infer=0.03s
+                                family  cv_macro_f1  cv_top1  cv_log_loss  st_top1_acc  st_macro_f1  st_log_loss  st_route_continuity  st_obs_macro_f1_arcs  st_predict_s
+model                                                                                                                                                                    
+LogisticRegression              Linear       0.9128   0.8749       0.1114       0.8631       0.9111       0.1004               0.7820                0.8906        0.0069
+GaussianNB               Probabilistic       0.7803   0.7770       1.3767       0.7537       0.7827       1.2477               0.7995                0.8338        0.0150
+KNN                     Instance-based       0.9161   0.8734       0.1317       0.8664       0.9152       0.1194               0.8073                0.9077       15.2924
+DecisionTree                      Tree       0.9312   0.8891       0.0931       0.8941       0.9329       0.0768               0.8182                0.9442        0.0058
+RandomForest        Ensemble (bagging)       0.9340   0.8945       0.0798       0.8946       0.9354       0.0687               0.8260                0.9435        0.3540
+LightGBM                      Boosting       0.9366   0.8953       0.0762       0.9034       0.9407       0.0640               0.8315                0.9473        0.8868
+XGBoost                       Boosting       0.9366   0.8958       0.0759       0.9015       0.9408       0.0642               0.8362                0.9476        0.2342
+MLP                     Neural network       0.9295   0.8889       0.0849       0.8941       0.9328       0.0723               0.8159                0.9339        0.0260

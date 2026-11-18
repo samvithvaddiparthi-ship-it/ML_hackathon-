@@ -712,7 +712,11 @@ need it. The page has:
 trips (single-machine run: API and UI on one laptop). Shown: the predicted route (red) and classifier-only route
 (orange), and metric cards for Top-1 87.4 %, route F1 0.952, continuity 100 %, 0/0 HMM chain breaks and pipeline
 timing. Replace this figure with the screenshot from the two-laptop rehearsal (Laptop 2).*
-<!-- TODO(B10): screenshot of the Laptop 1 console with [PathSnap] request lines -->
+![API console Laptop 1](figures/api_console.png)
+*Figure 36 – Laptop 1 console during the two-laptop rehearsal on a phone hotspot (API serving the 10 student_test
+trips). Every request comes from Laptop 2 (`client=172.20.10.3`): `GET /health`, `GET /trips`, then one
+`POST /predict` per selected trip. Each prediction prints one `[PathSnap]` line with the trip, number of observations,
+Top-1, route F1, HMM chain breaks and server latency (100–990 ms), and every response is `200 OK`.*
 
 ## 8. Team contributions and AI-use disclosure
 

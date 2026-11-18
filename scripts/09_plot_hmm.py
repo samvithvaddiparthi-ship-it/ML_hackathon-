@@ -79,9 +79,10 @@ def main():
         ax.bar(x + w / 2 + 0.01, piv["hmm"], w, color=BLUE, label="classifier + HMM")
         ax.set_xticks(x, [t[-2:] for t in piv.index]); ax.set_xlabel("student-test trip (last 2 digits of id)")
         ax.set_ylabel(lab); ax.set_ylim(0.5, 1.02); ax.grid(axis="x", visible=False)
-    axes[0].legend(frameon=False, fontsize=8, loc="lower left")
+    h, l = axes[0].get_legend_handles_labels()
     fig.suptitle("Per-trip effect of the HMM - STUDENT-TEST partition", fontsize=10, x=0.01, ha="left")
-    fig.tight_layout(); save(fig, "03_per_trip_student_test.png")
+    fig.tight_layout(rect=(0, 0.07, 1, 1)); fig.legend(h, l, loc="lower center", ncol=2, frameon=False, fontsize=8.5)
+    save(fig, "03_per_trip_student_test.png")
 
 
 if __name__ == "__main__":

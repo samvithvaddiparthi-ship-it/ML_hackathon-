@@ -56,6 +56,7 @@
 | `deploy\test_map.bat [trip_id]` | build and open one Folium map from student_test |
 | `deploy\run_error_analysis.bat` | B7 error analysis → `results\analysis` |
 | `deploy\make_route_maps.bat [trip_id]` | classifier-only vs HMM route maps → `results\maps\<id>_routes.html/.png` |
+| `deploy\benchmark_inference.bat` | repeated untuned vs tuned XGBoost inference timing |
 | `deploy\build_report.bat` | build and open `report\PathSnap_Report.pdf` |
 | `deploy\open_firewall.bat` | open TCP 8000 (run as Administrator, Laptop 1) |
 | `deploy\push.bat "message"` | commit all changes on `app-eda` and push |

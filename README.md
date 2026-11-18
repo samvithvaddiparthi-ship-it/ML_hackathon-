@@ -64,11 +64,18 @@ Commands use Windows paths (`.venv\Scripts\python`); on macOS/Linux use `.venv/b
 | EDA (Report §2.2) | `.venv\Scripts\python eda\02_eda.py` | `results/eda/`, `results/maps/eda_*.html/.png` |
 | A1 – labels, candidates, features | `.venv\Scripts\python scripts\02_build_dataset.py` | `results/cache/` (git-ignored), `results/dataset/` |
 | A2 – train & compare 8 models | `.venv\Scripts\python scripts\03_train_models.py` then `scripts\04_plot_models.py` | `results/models/`, `artifacts/models/` |
-| A3–A5 – Bayesian opt, HMM, export | *added by the ML-core stream* | `results/models/`, `results/hmm/`, `artifacts/` |
+| A3 – Bayesian optimisation (Optuna TPE, 40 trials, ~33 min) | `.venv\Scripts\python scripts\05_bayes_opt.py 40` then `scripts\06_plot_bayes.py` | `results/bayes_opt/`, `artifacts/models/XGBoost_tuned.joblib` |
+| A3 – repeated inference benchmark (untuned vs tuned) | `.venv\Scripts\python analysis\benchmark_inference.py` | `results/analysis/inference_benchmark.csv` |
+| A4–A5 – HMM tuning, final pipeline | `.venv\Scripts\python scripts\07_hmm.py` *(ML-core stream – command/outputs confirmed when A4 lands)* | `results/hmm/`, `artifacts/` |
 | B7 – error analysis | `.venv\Scripts\python analysis\error_analysis.py` | `results/analysis/` |
 | B8 – route-comparison maps | `.venv\Scripts\python viz\make_route_maps.py --all-student-test` | `results/maps/<id>_routes.html/.png` |
 | API smoke test | start API, then `.venv\Scripts\python api\test_api.py` | console report |
 | Report PDF | `.venv\Scripts\python report\build_report.py` | `report/PathSnap_Report.pdf` |
+
+## Final model
+Classifier: XGBoost (selected in Stage A2 on CV Top-1; Bayesian-optimised in A3; untuned vs tuned decided after the
+HMM stage – see report §4/§5 and `docs/STATUS_A.md`). Decoder: HMM + Viterbi over the directed road network
+(`src/pathsnap/hmm.py`). Served by `pathsnap.pipeline.predict_trip`, which the API calls unchanged.
 
 ## Deployment (two laptops)
 Full guide: [`deploy/DEPLOYMENT.md`](deploy/DEPLOYMENT.md).

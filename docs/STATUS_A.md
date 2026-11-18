@@ -71,6 +71,5 @@ transition / gaps / restarts / route expansion documented in the docstring), `sr
 * New response keys (additive): `pred_arc_classifier_only`, `route_arcs_classifier_only`, `route_coords_classifier_only`,
   `hmm` {used_hmm, n_gap_breaks, n_disconnect_breaks, params}, `timing_ms` {features, classifier, hmm, total};
   `metrics` adds `top1_accuracy_classifier_only`, `route_continuity_classifier_only`.
-* **For Aditya**: §5 results table + Q6 ready to paste at the `<!-- A: results table + Q6 -->` marker:
-  `docs/REPORT_SEC5_RESULTS_FROM_A.md` (Figures 27–29, Table 3). My §4 draft with real numbers: `docs/REPORT_SEC4_DRAFT_FROM_A.md`.
-  Route maps / screenshots / PDF can now be generated (C4).
+* §5 results + Q6, §6 route-map screenshots (Figures 31–33), viva HMM answers and a local UI screenshot (Figure 35) are now IN `report/report.md` / `docs/VIVA_QA.md`; PDF builds (30 pages).
+  Remaining for the team: §8 contributions, the real two-laptop UI + Laptop-1 console screenshots (§7), final read-through.

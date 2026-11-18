@@ -1,7 +1,7 @@
 # Viva preparation – likely questions with short answers
 
 Every team member should be able to give these answers in their own words, and know where the evidence lives.
-Numbers come from files in this repo (named in brackets). Items marked **[A: confirm]** depend on Stages A3–A5
+Numbers come from files in this repo (named in brackets). (All [A] items are now confirmed against the final code.) Items formerly marked [A] depended on Stages A3–A5
 and must be checked against Samvith's final implementation before the viva.
 
 ## Data and preprocessing
@@ -86,44 +86,92 @@ and must be checked against Samvith's final implementation before the viva.
     * Trip 77 alone holds 49 % of the errors.
     [`results/analysis/error_analysis.md`]
 
-## Bayesian optimisation [A: confirm]
-27. **What is Bayesian optimisation?** It fits a probabilistic surrogate of the objective over the
-    hyper-parameters and picks the next trial by trading off exploration and exploitation. Optuna's default
-    sampler is TPE (Tree-structured Parzen Estimator): it models good and bad trials as two densities and
-    samples where the ratio favours good trials.
-28. **What was searched and with what objective?** [A: confirm] The XGBoost rounds, depth, learning rate,
-    subsampling and regularisation; the objective is GroupKFold CV on train. Give the ranges, the number of
-    trials and the best values from §4.
-29. **Did tuning help?** [A: confirm, §4 table: untuned vs tuned CV macro-F1, ST Top-1, ST macro-F1, log loss, inference time.]
+## Bayesian optimisation (Stage A3 – final numbers from `results/bayes_opt/`)
+27. **What is Bayesian optimisation and which sampler did you use?** It fits a probabilistic model of
+    "hyper-parameters → score" from past trials and uses it to pick promising new trials, instead of a grid or random
+    search. We used Optuna's TPE (Tree-structured Parzen Estimator): it splits the trials into good and bad ones,
+    models each group's density, and samples where good/bad is highest. Seed 42, with the first 10 trials random.
+28. **What did you search?** Nine XGBoost hyper-parameters:
+    * `n_estimators` 100–800 and `learning_rate` 0.01–0.3, both log-uniform;
+    * `max_depth` 3–12;
+    * `min_child_weight` 1–200, log-uniform;
+    * `subsample` 0.5–1 and `colsample_bytree` 0.4–1;
+    * `gamma` 0–5;
+    * `reg_lambda` 1e-3–50 and `reg_alpha` 1e-3–10, both log-uniform.
+    [`best_params.json`]
+29. **Objective?** Maximise the mean GroupKFold(5) Top-1 on the 80 train trips, using the same folds as the model
+    comparison, so the numbers are directly comparable. Student-test was not used during the search.
+30. **How many trials, and what is pruning?** 40 trials: 25 completed and 15 pruned. The MedianPruner stops a trial
+    after a fold if its running mean is below the median of earlier trials at that fold, which saves time.
+31. **Best values?** Trial 31: CV Top-1 0.8974. Its settings: 410 trees, lr 0.024, depth 6, min_child_weight 9.9,
+    subsample 0.76, colsample 0.41, gamma 4.85, reg_lambda 0.18, reg_alpha 0.0035. These are much more
+    regularised than the untuned model (depth 8, colsample 0.8, gamma 0).
+32. **Which hyper-parameter mattered most?** `subsample`, with 62 % of the variance by fANOVA. Values below about
+    0.65 cost 0.2–0.4 points of CV Top-1.
+33. **Did tuning help? Be honest.**
+    * CV Top-1 rose by only +0.16 points (0.8958 → 0.8974), inside the fold std, and the tuned model wins on 3 of 5 folds.
+    * The real gain is that overfitting is gone: the train/CV gap went from 5.2 to 1.0 points and the fold std
+      from 0.0177 to 0.0157.
+    * Inference is about 39 % faster, by a repeated benchmark.
+    * But student-test Top-1 dropped 0.7 points (0.9015 → 0.8947) on just 10 trips.
+    * So we carried both models into the HMM stage and chose the final one there: inside the HMM the **untuned**
+      emissions won on train out-of-fold Top-1 (0.9523 vs 0.9490), so the deployed model is untuned XGBoost + HMM.
+      [`artifacts/final/hmm_config.json`, `results/hmm/train_oof_grid.csv`]
+34. **Why not tune on student-test?** That would turn the test set into a validation set, and its score would no
+    longer be an unbiased estimate of performance on new trips.
 
-## HMM / Viterbi [A: confirm every answer against the final code]
-30. **Hidden states?** The candidate arcs of each observation.
-31. **Emissions?** Derived from the classifier's probability for each candidate. [A: confirm the exact form]
-32. **Transitions?** They favour arcs that are connected in the network and consistent with the distance
-    driven; disconnected pairs are penalised or forbidden. [A: confirm]
-33. **What does Viterbi do?** Dynamic programming that finds the single most probable sequence of states
-    (arcs), in O(T · K²) for T observations and K candidates.
-34. **Large gaps or missing candidates?** [A: confirm the gap rule, e.g. relaxed transitions above 30 s.] Every
-    observation has at least two candidates by construction (`min_k`).
-35. **Did the HMM help?** [A: confirm, §5 table: classifier-only vs HMM Top-1, route F1, continuity.] Expected
-    from §3.4: it should remove the one-observation direction flips.
+## HMM / Viterbi [`src/pathsnap/hmm.py`, `results/hmm/`]
+35. **Hidden states?** For each observation, its candidate arcs (≤ 12, at least 2) together with the
+    observation's projected position along each arc. The state set changes from step to step, and each state
+    keeps its arc_id.
+36. **Emissions?** log e = w_e · log(p_XGBoost + 1e-6), the classifier's probability that the candidate is the
+    true arc. Deployed w_e = 0.25.
+37. **Transitions?**
+    * log a = −|d_route − d_gps| / β, with β = 3 m.
+    * d_route is the driving distance over the **directed** network from the previous projected position to the
+      new one. On the same arc it is |Δt_along|·length; otherwise it is the rest of the old arc + the Dijkstra
+      shortest path + the start of the new arc.
+    * Pairs that are not reachable within min(50 m/s·Δt + 50, 3·d_gps + 150) m are impossible (−∞).
+    * A one-sample flip to the reverse arc needs a U-turn route that is much longer than the 1-s GPS move, so it
+      is rejected.
+38. **What does Viterbi do?** Dynamic programming: for each step it keeps the best log score per state plus a
+    back-pointer, then backtracks from the best final state. Cost O(T·K²) plus cut-off Dijkstra searches,
+    cached per node. The decoded arcs are then joined with shortest-path arcs into a continuous route.
+39. **Large gaps or missing candidates?**
+    * If Δt > gap_s = 120 s, the network constraint is dropped for that step and only emissions count
+      (`n_gap_breaks`).
+    * If no candidate is reachable from any previous one, the chain restarts at that step
+      (`n_disconnect_breaks`). Train trip 54 accounts for 1,671 of the 1,798 restarts on train: its route is
+      truncated and the GPS is far from the network.
+    * Every observation has at least 2 candidates (`min_k`).
+40. **How were β, w_e and gap_s chosen?**
+    * Grid search on **train out-of-fold** emissions only, so no student-test or evaluator data was used.
+    * Only λ = w_e·β changes the Viterbi path: multiplying the objective by β leaves the argmax unchanged.
+    * The best λ was 0.75 and the best gap_s 120 s (0.9523 train-OOF Top-1).
+41. **Did the HMM help?**
+    * Yes. On student-test, Top-1 0.9015 → 0.9466, route F1 0.8994 → 0.9715, continuity 0.836 → 0.9995 and route
+      length recall 0.981 → 0.999. On train OOF, Top-1 0.8954 → 0.9523.
+    * Trip 77, which had the most direction flips, improved 0.7665 → 0.8743.
+    * It did **not** help on trip 65 (−0.3 points, the only student-test trip with a gap above gap_s) or on 7 of
+      80 train trips (worst: trips 22 and 89, −1.9 points; trip 22 is the most down-sampled).
+      [`results/hmm/student_test_summary.csv`, `train_oof_summary.csv`]
 
 ## System, API and UI
-36. **How do the two laptops talk?** Over HTTP on the same hotspot. The UI on Laptop 2 calls `GET /trips` and
+42. **How do the two laptops talk?** Over HTTP on the same hotspot. The UI on Laptop 2 calls `GET /trips` and
     `POST /predict` on `http://<Laptop-1-IP>:8000`; CORS is open. [`api/main.py`, `ui/app.js`]
-37. **How do you guarantee no ground-truth leakage to the UI?**
+43. **How do you guarantee no ground-truth leakage to the UI?**
     * `predict_trip` loads the trip with `with_route=False`.
     * Only `score_trip` reads `.route`, server-side, and it returns numbers only.
     * The API strips any reference-like key.
     * `api/test_api.py` asserts that no such key is returned.
     * The UI has no code that draws a reference route.
-38. **What is logged?** One coloured `[PathSnap]` line per request on the Laptop 1 console (client IP, trip,
+44. **What is logged?** One coloured `[PathSnap]` line per request on the Laptop 1 console (client IP, trip,
     n_obs, Top-1, route F1, latency), plus full metrics in `api/logs/api.log`.
-39. **What if the evaluator sends a bad trip id?** 400 if it does not match `^[0-9A-Za-z_-]+$`, which blocks
+45. **What if the evaluator sends a bad trip id?** 400 if it does not match `^[0-9A-Za-z_-]+$`, which blocks
     path traversal; 404 if the folder does not exist. The server never crashes.
-40. **Why does the UI work without internet?** Leaflet is bundled in `ui/vendor/`. Only the OpenStreetMap
+46. **Why does the UI work without internet?** Leaflet is bundled in `ui/vendor/`. Only the OpenStreetMap
     background tiles need internet.
-41. **Are the metrics computed on the UI side?** No, everything is computed on Laptop 1 against the reference
+47. **Are the metrics computed on the UI side?** No, everything is computed on Laptop 1 against the reference
     route. The UI only displays the numbers it receives.
-42. **How would you reproduce any number in the report?** Every figure and table is produced by a script in
+48. **How would you reproduce any number in the report?** Every figure and table is produced by a script in
     `scripts/`, `eda/`, `analysis/` or `viz/`. The README lists the commands per stage.

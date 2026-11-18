@@ -163,7 +163,8 @@
     banner(null);
     const t0 = performance.now();
     try {
-      const res = await api("/predict", { method: "POST", body: JSON.stringify({ trip_id: id }) });
+      const useHmm = $("useHmm").checked;
+      const res = await api("/predict", { method: "POST", body: JSON.stringify({ trip_id: id, use_hmm: useHmm }) });
       const total = performance.now() - t0;
       drawResult(res);
       const m = res.metrics || {};
@@ -176,6 +177,18 @@
       setMetric("m-nobs", (res.n_obs ?? 0).toLocaleString());
       setMetric("m-lat", `${Math.round(res.server_latency_ms ?? 0)} / ${Math.round(total)} ms`);
       setMetric("m-model", res.model ? `${res.model.name} v${res.model.version}` : null);
+      // optional keys added by the HMM pipeline - every one may be absent
+      const hmm = res.hmm && typeof res.hmm === "object" ? res.hmm : null;
+      const num = (v) => (typeof v === "number" ? v : null);
+      if (!useHmm) setMetric("m-hmm", null, "off (classifier only)");
+      else if (hmm && (num(hmm.n_gap_breaks) !== null || num(hmm.n_disconnect_breaks) !== null))
+        setMetric("m-hmm", `${num(hmm.n_gap_breaks) ?? "–"} / ${num(hmm.n_disconnect_breaks) ?? "–"}`);
+      else setMetric("m-hmm", null, "N/A – not reported by this pipeline");
+      const tm = res.timing_ms && typeof res.timing_ms === "object" ? res.timing_ms : {};
+      const parts = ["features", "classifier", "hmm"].filter((k) => num(tm[k]) !== null).map((k) => `${k} ${Math.round(tm[k])}`);
+      const other = Object.entries(tm).filter(([k, v]) => !["features", "classifier", "hmm"].includes(k) && num(v) !== null)
+        .map(([k, v]) => `${k} ${Math.round(v)}`);
+      setMetric("m-timing", parts.concat(other).join(" · ") || null, "N/A");
       done.add(id);
       const el = document.querySelector(`.trip[data-id="${id}"] span`);
       if (el && !el.querySelector(".done")) el.insertAdjacentHTML("beforeend", '<span class="done">✓ run</span>');
@@ -192,6 +205,8 @@
   $("connectBtn").onclick = connect;
   $("apiUrl").addEventListener("keydown", (e) => { if (e.key === "Enter") connect(); });
   $("runBtn").onclick = run;
+  try { const v = localStorage.getItem("pathsnap.useHmm"); if (v !== null) $("useHmm").checked = v === "1"; } catch (e) { /* ignore */ }
+  $("useHmm").onchange = () => { try { localStorage.setItem("pathsnap.useHmm", $("useHmm").checked ? "1" : "0"); } catch (e) { /* ignore */ } };
   if (location.protocol === "https:" && apiUrl.startsWith("http:")) {
     banner("This page is served over HTTPS; browsers block calls to an http:// API. Serve ui/ with python -m http.server.", "info");
   }

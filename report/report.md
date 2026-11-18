@@ -131,8 +131,10 @@ route, layer control and legend. Interactive version: `results/maps/eda_student_
    arc get no label and are excluded from training and scoring. This removes the truncated-route tails found in
    §2.2.4. 87.5 % of train and 99.2 % of student_test observations are labelled.
 4. **Candidate generation** (`RoadNet.candidates`). For each observation we keep the arcs within 50 m, at most 12.
-   The radius follows from §2.2.4: on train, 30 m already covers 100 % of labelled points
-   (`results/dataset/radius_study.csv`), and 50 m adds a safety margin. This gives 6.6 (train) and 7.7
+   The radius follows from §2.2.4. Labels are only kept within 30 m of the reference route, and 97.7 % of the
+   labelled train observations lie within 20 m of their true arc (94.2 % within 15 m,
+   `results/dataset/radius_study.csv`). 50 m adds a margin for GPS jumps and for the unlabelled points the API
+   must still match. This gives 6.6 (train) and 7.7
    (student_test) candidates per observation. The true arc is missing from the candidate set for only 0.19 %
    (train) and 0.04 % (student_test) of labelled observations.
 
@@ -426,12 +428,12 @@ orders of magnitude:
 using **the same folds as §3**, so tuned and untuned results are directly comparable. CV macro-F1, log loss and the
 fold standard deviation were recorded for every trial, but did not drive the search.
 
-**Q4 – Trials.** 40 trials: 25 completed and 15 pruned. The best is **trial 31**, with CV Top-1 0.8974 (Figure 24).
+**Q4 – Trials.** 40 trials: 25 completed and 15 pruned. The best is **trial 31**, with CV Top-1 0.8974 (Figure 23).
 The completed trials span 0.8930–0.8974. Trial 2, still in the random start-up phase, already reached 0.8967,
 so most of the gain over the untuned 0.8958 came early, and TPE refined it by 0.07 points.
 
 **Q5 – Best values and what mattered.** By fANOVA importance, `subsample` alone explains 62 % of the
-objective's variance. The best region is 0.72–0.85 (Figure 26): values below 0.65 lose about 0.2–0.4 points.
+objective's variance. The best region is 0.72–0.85 (Figure 25): values below 0.65 lose about 0.2–0.4 points.
 `reg_alpha` and `learning_rate` follow with 0.10 each. Compared with the untuned configuration, the best trial
 regularises much more strongly:
 
@@ -476,16 +478,16 @@ absolute values are higher.*
   and the final deployed model is chosen in §5 on CV and route-level results.
 
 ![optimisation history](../results/bayes_opt/plots/01_optimisation_history.png)
-*Figure 24 – Optimisation history: completed and pruned trials, best-so-far, and the untuned reference [train, GroupKFold(5)].*
+*Figure 23 – Optimisation history: completed and pruned trials, best-so-far, and the untuned reference [train, GroupKFold(5)].*
 
 ![importance](../results/bayes_opt/plots/02_param_importance.png)
-*Figure 25 – fANOVA hyper-parameter importance [train].*
+*Figure 24 – fANOVA hyper-parameter importance [train].*
 
 ![slices](../results/bayes_opt/plots/03_param_slices.png)
-*Figure 26 – CV Top-1 vs the two most important hyper-parameters (completed trials) [train].*
+*Figure 25 – CV Top-1 vs the two most important hyper-parameters (completed trials) [train].*
 
 ![tuned vs untuned](../results/bayes_opt/plots/04_tuned_vs_untuned.png)
-*Figure 27 – Untuned vs tuned XGBoost, CV [train] and student-test [student_test].*
+*Figure 26 – Untuned vs tuned XGBoost, CV [train] and student-test [student_test].*
 
 ## 5. HMM and Viterbi route reconstruction
 
@@ -552,7 +554,7 @@ probabilities. Neither the student-test nor the evaluator partition was used.
   tie-break. The whole grid ran in about 90 s on 8 cores.
 
 ![decoder grid](../results/hmm/plots/01_decoder_grid.png)
-*Figure 28 – Decoder grid search on train out-of-fold emissions [train]. Top-1 peaks at λ ≈ 0.75 and drops when
+*Figure 27 – Decoder grid search on train out-of-fold emissions [train]. Top-1 peaks at λ ≈ 0.75 and drops when
 the classifier is trusted too much (λ → 60, the decode moves back towards the classifier-only result) or too
 little (λ = 0.25, the decode follows network geometry even where the classifier is confident).*
 
@@ -577,10 +579,10 @@ share of consecutive route arcs that are joined head-to-tail. Source: `results/h
 `student_test_summary.csv`.*
 
 ![classifier vs HMM](../results/hmm/plots/02_classifier_vs_hmm.png)
-*Figure 29 – Classifier-only vs classifier + HMM [train out-of-fold, student_test].*
+*Figure 28 – Classifier-only vs classifier + HMM [train out-of-fold, student_test].*
 
 ![per trip](../results/hmm/plots/03_per_trip_student_test.png)
-*Figure 30 – Per-trip Top-1 and route F1, classifier-only vs HMM [student_test].*
+*Figure 29 – Per-trip Top-1 and route F1, classifier-only vs HMM [student_test].*
 
 **Q6 – Did HMM decoding improve the final route? Yes, on every route-level measure and on almost every trip.**
 
@@ -637,16 +639,16 @@ Drawing the prediction on top of the wide reference line makes deviations easy t
 student_test trips.
 
 ![route map 52](../results/maps/00000052_routes.png)
-*Figure 31 – Trip 00000052 [student_test], deployed model (route F1 0.99). Blue: GPS observations, grey: nearby
+*Figure 30 – Trip 00000052 [student_test], deployed model (route F1 0.99). Blue: GPS observations, grey: nearby
 network, green: reference route, orange dashed: classifier-only route, red: HMM route. Near the start (bottom
 right) the classifier-only route makes a short detour onto a side arc. The HMM route follows the reference.
 The background tiles did not load during this capture, but all data layers are drawn.*
 
 ![route map 77](../results/maps/00000077_routes.png)
-*Figure 32 – Trip 00000077 [student_test], the hardest trip (§3.4), full extent (3,911 observations, route F1 0.95).*
+*Figure 31 – Trip 00000077 [student_test], the hardest trip (§3.4), full extent (3,911 observations, route F1 0.95).*
 
 ![route map 77 zoom](../results/maps/00000077_routes_zoom.png)
-*Figure 33 – Trip 00000077 zoomed (zoom 17) on the densest cluster of observations where the classifier-only arc and
+*Figure 32 – Trip 00000077 zoomed (zoom 17) on the densest cluster of observations where the classifier-only arc and
 the HMM arc differ (`viz/zoom_screenshot.py`). The vehicle moves slowly (median 7 m between fixes) and the fixes
 scatter across the carriageway. In this window, all 49 disagreements are reverse-direction cases: the
 classifier picks the opposite arc of the same street, so the orange and red lines overlap, and the HMM keeps the
@@ -659,7 +661,7 @@ Interactive versions of all ten student-test maps are in `results/maps/<trip>_ro
 ## 7. API, UI and deployment
 
 ![architecture](figures/architecture.svg)
-*Figure 34 – Two-laptop deployment architecture.*
+*Figure 33 – Two-laptop deployment architecture.*
 
 **API (Laptop 1, `api/main.py`, FastAPI + Uvicorn on 0.0.0.0:8000, Swagger UI at `/docs`).**
 
@@ -701,22 +703,33 @@ need it. The page has:
 **Deployment.** `deploy/DEPLOYMENT.md` and `deploy/DEMO_CHECKLIST.md` cover the steps:
 
 * Put both laptops on the same Wi-Fi or phone hotspot.
-* Run `deploy\open_firewall.bat` once on Laptop 1.
-* On Laptop 1, run `deploy\run_api.bat "<evaluator trips folder>"`.
-* On Laptop 2, run `deploy\run_ui.bat http://<Laptop-1-IP>:8000`.
-* Before the demo, `api/test_api.py` checks all trips end to end.
+* On Laptop 1 (our macOS machine) run `deploy/run_api.sh "<evaluator trips folder>"`. On Windows the same step is
+  `deploy\run_api.bat "<folder>"`, after running `deploy\open_firewall.bat` once.
+* On Laptop 2 (Windows) run `deploy\run_ui.bat http://<Laptop-1-IP>:8000`. On macOS/Linux it is
+  `deploy/run_ui.sh http://<Laptop-1-IP>:8000`.
+* Before the demo, `api/test_api.py` checks all trips end to end, with HMM on and off.
 
-<!-- TODO(B10, at the two-laptop rehearsal): screenshot of the UI after a run (Laptop 2) -->
-![UI local run](figures/ui_screenshot_local.png)
-*Figure 35 – Evaluator UI after running trip 00000077 against the API, with the deployed model on the student_test
-trips (single-machine run: API and UI on one laptop). Shown: the predicted route (red) and classifier-only route
-(orange), and metric cards for Top-1 87.4 %, route F1 0.952, continuity 100 %, 0/0 HMM chain breaks and pipeline
-timing. Replace this figure with the screenshot from the two-laptop rehearsal (Laptop 2).*
+**Two-laptop run (18 Nov 2026).** The API ran on Laptop 1 (macOS, `deploy/run_api.sh`, with the 10 student_test
+trips as the evaluation folder) and the UI on Laptop 2 (Windows), with both laptops on the same phone-hotspot network.
+The UI connected to `http://172.20.10.2:8000`, and Laptop 1 logged the requests from Laptop 2 (`172.20.10.3`).
+
+![UI Laptop 2, trip 40](figures/ui_laptop2_trip40.png)
+*Figure 34 – Evaluator UI on Laptop 2 after running trip 00000040 [student_test] against the API on Laptop 1. Top-1
+97.9 %, macro-F1 0.984, route precision 99.0 %, recall 100 %, route F1 0.995, continuity 100 %, 2,995 observations,
+0/0 HMM chain breaks. Latency is 389 ms on the server and 787 ms end to end, including the network round trip. The
+predicted route (red) covers the classifier-only route (orange dashed) almost everywhere.*
+
+![UI Laptop 2, trip 52](figures/ui_laptop2_trip52.png)
+*Figure 35 – The same setup for the shortest trip, 00000052 [student_test] (262 observations): Top-1 100 %, route
+F1 0.989, server / total latency 100 / 765 ms; pipeline timing: features 53 ms, classifier 5 ms, HMM 27 ms.*
+
 ![API console Laptop 1](figures/api_console.png)
-*Figure 36 – Laptop 1 console during the two-laptop rehearsal on a phone hotspot (API serving the 10 student_test
-trips). Every request comes from Laptop 2 (`client=172.20.10.3`): `GET /health`, `GET /trips`, then one
-`POST /predict` per selected trip. Each prediction prints one `[PathSnap]` line with the trip, number of observations,
-Top-1, route F1, HMM chain breaks and server latency (100–990 ms), and every response is `200 OK`.*
+*Figure 36 – Laptop 1 console during the run. At start-up it prints the model, the trips folder (10 trips) and the
+Swagger URL. Every request comes from Laptop 2 (`client=172.20.10.3`): `GET /health`, `GET /trips`, then one
+`POST /predict` per selected trip. Each prediction adds one `[PathSnap]` line with the trip, number of observations,
+Top-1, route F1, HMM chain breaks and server latency, and every response is `200 OK`. Example: trip 00000065 has
+Top-1 0.863, route F1 0.99, `hmm_breaks=1` (the 210 s gap discussed in §5.2) and 238 ms. All values match
+`results/hmm/student_test_per_trip.csv`.*
 
 ## 8. Team contributions and AI-use disclosure
 

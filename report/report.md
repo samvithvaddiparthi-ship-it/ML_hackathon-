@@ -718,10 +718,12 @@ timing. Replace this figure with the screenshot from the two-laptop rehearsal (L
 
 | Member | Contribution |
 |---|---|
-| Samvith Vaddiparthi (PES1UG24AM468) | <!-- TODO --> |
-| Vikas MS (PES1UG24AM469) | <!-- TODO --> |
-| Aditya A Kirankumar (PES1UG24AM470) | <!-- TODO --> |
-| Haneesh E (PES1UG24AM471) | <!-- TODO --> |
+| Samvith Vaddiparthi (PES1UG24AM468) | Dataset inventory and data-quality checks (Stage 1, `scripts/01_inventory.py`); per-observation label alignment, candidate generation and the 25-feature design (`labels.py`, `geo.py`, `features.py`, `02_build_dataset.py`); HMM/Viterbi decoder, decoder tuning and the classifier-vs-HMM study (`hmm.py`, `07_hmm_experiments.py`); final pipeline integration and model export (`pipeline.py`, `08_export_final.py`); report §5. |
+| Vikas MS (PES1UG24AM469) | Model experimentation: training and grouped 5-fold cross-validation of the eight classifiers, evaluation metrics and comparison plots (`models.py`, `metrics.py`, `03_train_models.py`, `04_plot_models.py`); Bayesian hyperparameter optimisation with Optuna and the tuned-vs-untuned comparison (`05_bayes_opt.py`, `06_plot_bayes.py`); report §3 and §4. |
+| Aditya A Kirankumar (PES1UG24AM470) | Exploratory data analysis and Folium map builder (`eda/02_eda.py`, `viz/folium_maps.py`); FastAPI backend with logging and leakage safeguards (`api/`); evaluator UI (`ui/`); two-laptop deployment scripts and guide (`deploy/`); report §2.2 and §7. |
+| Haneesh E (PES1UG24AM471) | Error analysis of the selected model (`analysis/error_analysis.py`) and the inference benchmark; route-comparison maps and screenshots (`viz/make_route_maps.py`, `viz/zoom_screenshot.py`); API end-to-end tests (`api/test_api.py`), demo checklist and viva preparation (`deploy/DEMO_CHECKLIST.md`, `docs/VIVA_QA.md`); report assembly and PDF build (`report/build_report.py`), §1 and §6. |
+
+All four members reviewed the results, took part in the two-laptop rehearsal and can explain every section of the report.
 
 **AI assistance.** AI coding assistants were used for code scaffolding, debugging and drafting parts of this
 report. All experiments were run by the team on the provided data, every number and figure comes from scripts
